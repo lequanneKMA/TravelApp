@@ -1,20 +1,59 @@
 // lib/models/place_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
+// Danh mục tập trung, chỉ cần sửa ở đây
+const List<String> allCategories = [
+  'Biển',
+  'Núi',
+  'Thành phố',
+  'Rừng',
+  'Di tích',
+  'Ẩm thực',
+  'Khác',
+];
 
 class Place {
   final String id;
   final String name;
   final String description;
   final List<String> imageUrls;
+  final List<String> categories;
   final String location;
-  final double latitude;
-  final double longitude;
   final double rating;
   final String category;
   final int reviewCount;
-  final List<String> categories;
   final String bestTimeToVisit;
-  final String travelTips;
+  final int? minPrice;
+  final int? maxPrice;
+
+  final List<String> filterCategories = [
+  'Phổ biến', 
+  ...allCategories, 
+];
+
+  // Getter để format giá tiền
+  String get formattedMinPrice {
+    if (minPrice == null) return '';
+    return NumberFormat('#,###', 'vi_VN').format(minPrice!);
+  }
+
+  String get formattedMaxPrice {
+    if (maxPrice == null) return '';
+    return NumberFormat('#,###', 'vi_VN').format(maxPrice!);
+  }
+
+  String get formattedPriceRange {
+    if (minPrice != null && maxPrice != null) {
+      return '${formattedMinPrice} - ${formattedMaxPrice} VNĐ';
+    } else if (minPrice != null) {
+      return 'Từ ${formattedMinPrice} VNĐ';
+    } else if (maxPrice != null) {
+      return 'Đến ${formattedMaxPrice} VNĐ';
+    } else {
+      return 'Không rõ';
+    }
+  }
 
   Place({
     required this.id,
@@ -23,13 +62,12 @@ class Place {
     required this.imageUrls,
     required this.location,
     required this.category,
-    required this.latitude,
-    required this.longitude,
     this.rating = 0.0,
     this.reviewCount = 0,
     this.categories = const [],
     this.bestTimeToVisit = '',
-    this.travelTips = '',
+    this.minPrice,
+    this.maxPrice,
   });
 
   factory Place.fromFirestore(DocumentSnapshot doc) {
@@ -41,13 +79,12 @@ class Place {
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
       category: data['category'] ?? 'Khác',
       location: data['location'] ?? '',
-      latitude: (data['latitude'] ?? 0.0).toDouble(),
-      longitude: (data['longitude'] ?? 0.0).toDouble(),
       rating: (data['rating'] ?? 0.0).toDouble(),
       reviewCount: (data['reviewCount'] ?? 0).toInt(),
       categories: List<String>.from(data['categories'] ?? []),
       bestTimeToVisit: data['bestTimeToVisit'] ?? '',
-      travelTips: data['travelTips'] ?? '',
+      minPrice: data['minPrice'],
+      maxPrice: data['maxPrice'],
     );
   }
 
@@ -57,19 +94,18 @@ class Place {
       'description': description,
       'imageUrls': imageUrls,
       'location': location,
-      'latitude': latitude,
       'category': category,
-      'longitude': longitude,
       'rating': rating,
       'reviewCount': reviewCount,
       'categories': categories,
       'bestTimeToVisit': bestTimeToVisit,
-      'travelTips': travelTips,
+      'minPrice': minPrice,
+      'maxPrice': maxPrice,
     };
   }
 
   @override
   String toString() {
-    return 'Place(id: $id, name: $name, location: $location, rating: $rating)';
+    return 'Place(id: $id, name: $name, location: $location, rating: $rating, minPrice: $minPrice, maxPrice: $maxPrice)';
   }
 }

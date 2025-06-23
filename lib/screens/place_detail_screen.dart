@@ -9,9 +9,8 @@ import 'package:lnmq/services/place_service.dart';
 import 'package:lnmq/services/review_service.dart'; 
 import 'package:lnmq/services/auth_service.dart'; 
 import 'package:lnmq/services/user_service.dart';
-import 'package:lnmq/services/google_places_service.dart'; 
-import 'package:lnmq/models/hotel_suggestion_model.dart'; 
-import 'package:lnmq/widgets/hotel_suggestions_bottom_sheet.dart';
+import 'package:lnmq/screens/book_tour_screen.dart'; 
+
 
 class PlaceDetailScreen extends StatefulWidget {
   final String placeId;
@@ -27,7 +26,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   final ReviewService _reviewService = ReviewService();
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
-  final GooglePlacesService _googlePlacesService = GooglePlacesService(); // Thêm service này
   
   // Stream để theo dõi user hiện tại
   late Stream<AppUser?> _currentUserStream;
@@ -77,35 +75,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     }
   }
 
-  // Hàm hiển thị khách sạn gợi ý
-  void _showNearbyHotels(double lat, double lng) async {
-    if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không có thông tin vị trí để tìm khách sạn.')),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đang tìm khách sạn gần đó...')),
-    );
-
-    final List<HotelSuggestion> hotels = await _googlePlacesService.searchNearbyHotels(lat, lng);
-
-    if (hotels.isNotEmpty) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (context) {
-          return HotelSuggestionsBottomSheet(hotels: hotels);
-        },
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy khách sạn nào gần địa điểm này.')),
-      );
-    }
-  }
 
   // Hàm gửi đánh giá
   Future<void> _submitReview(String placeId, String userId, String userName) async {
@@ -174,7 +143,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   expandedHeight: 250.0,
   floating: false,
   pinned: true,
-  automaticallyImplyLeading: false, // Thêm dòng này để ẩn nút back mặc định
+  automaticallyImplyLeading: false, 
   actions: [
     // Nút yêu thích
     StreamBuilder<AppUser?>(
@@ -271,30 +240,65 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                             style: TextStyle(fontSize: 16, height: 1.5, color: Colors.grey[800]),
                           ),
                           const SizedBox(height: 20),
-                          _buildInfoSection('Thời điểm lý tưởng:', place.bestTimeToVisit ?? ''),
-                          _buildInfoSection('Mẹo du lịch:', place.travelTips ?? ''),
-                          _buildInfoSection('Danh mục:', place.category), 
-                          _buildInfoSection('Tọa độ:', 'Lat: ${place.latitude}, Long: ${place.longitude}'),
+                          
+                          // Phần thông tin dạng card ngang
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                // Card Duration (Thời điểm lý tưởng)
+                                _buildInfoCard(
+                                  icon: Icons.access_time,
+                                  iconColor: Colors.orange,
+                                  backgroundColor: Colors.orange.withOpacity(0.1),
+                                  title: 'Thời điểm',
+                                  subtitle: place.bestTimeToVisit ?? 'No information',
+                                ),
+                                
+                                const SizedBox(width: 12),
+                                
+                                // Card Price (Mức giá)
+                                _buildInfoCard(
+                                  icon: Icons.attach_money,
+                                  iconColor: Colors.red,
+                                  backgroundColor: Colors.red.withOpacity(0.1),
+                                  title: 'Giá',
+                                  subtitle: place.formattedPriceRange,
+                                ),
+                                
+                                const SizedBox(width: 12),
+                                
+                                // Card Weather (Danh mục)
+                                _buildInfoCard(
+                                  icon: Icons.wb_sunny,
+                                  iconColor: Colors.blue,
+                                  backgroundColor: Colors.blue.withOpacity(0.1),
+                                  title: 'Danh mục',
+                                  subtitle: (place.categories.isNotEmpty)
+                                      ? place.categories.join(', ')
+                                      : 'Không rõ',
+                                ),
+                              ],
+                            ),
+                          ),
+                          
                           const SizedBox(height: 20),
                           const Divider(),
                           const SizedBox(height: 10),
                           
 
-                          // Nút gợi ý khách sạn lớn hơn
                           Padding(
                             padding: const EdgeInsets.only(bottom: 16.0),
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                if (place.latitude != null && place.longitude != null) {
-                                  _showNearbyHotels(place.latitude!, place.longitude!);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Địa điểm này chưa có thông tin vị trí cụ thể.')),
-                                  );
-                                }
+                                // Chuyển sang màn hình BookTourScreen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const BookTourScreen()),
+                                );
                               },
-                              icon: const Icon(Icons.hotel, color: Colors.white),
-                              label: const Text('Gợi ý Khách sạn gần đây', style: TextStyle(color: Colors.white)),
+                              icon: const Icon(Icons.route, color: Colors.white),
+                              label: const Text('Gợi ý Tour', style: TextStyle(color: Colors.white)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.teal,
                                 minimumSize: const Size(double.infinity, 50),
@@ -438,6 +442,71 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  // Hàm helper để xây dựng card thông tin
+  Widget _buildInfoCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color backgroundColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

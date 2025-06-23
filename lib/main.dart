@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lnmq/firebase_options.dart';
 import 'package:lnmq/screens/auth_screen.dart'; // Màn hình đăng nhập/đăng ký
 import 'package:lnmq/screens/home_screen.dart'; // Màn hình chính sau khi đăng nhập
+import 'package:lnmq/admin_screens/admin_home_screen.dart'; // Màn hình chính cho admin
 import 'package:lnmq/services/place_service.dart'; // Giữ nguyên nếu bạn dùng
 
 void main() async {
@@ -52,7 +54,23 @@ class MyApp extends StatelessWidget {
             // KIỂM TRA THÊM ĐIỀU KIỆN EMAIL ĐÃ ĐƯỢC XÁC MINH
             if (user != null && user.emailVerified) {
               // Nếu có người dùng và email đã được xác minh, điều hướng đến HomeScreen
-              return const HomeScreen();
+              // Lấy role từ Firestore
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+                    return const HomeScreen(); // fallback
+                  }
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  if (data['role'] == 'admin') {
+                    return const AdminHomeScreen();
+                  }
+                  return const HomeScreen();
+                },
+              );
             } else if (user != null && !user.emailVerified) {
               // Nếu có người dùng nhưng email chưa được xác minh:
               // 1. Đăng xuất người dùng để đảm bảo họ không bị "mắc kẹt" trong trạng thái đăng nhập nhưng chưa xác minh.

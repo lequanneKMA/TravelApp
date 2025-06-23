@@ -9,6 +9,7 @@ import 'package:lnmq/services/user_service.dart';
 import 'package:lnmq/services/storage_service.dart';
 import 'package:lnmq/models/review_model.dart';
 import 'package:lnmq/services/review_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 
 
@@ -131,6 +132,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: const Text('Hồ sơ cá nhân', style: TextStyle(color: Colors.black87)),
             backgroundColor: Colors.transparent,
             elevation: 0,
+            actions: [
+              TextButton.icon(
+                onPressed: () async {
+                  await _authService.signOut();
+                  if (mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+                  }
+                },
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: const Text(
+                  'Đăng xuất',
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                ),
+              ),
+            ],
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -209,6 +228,13 @@ class AuthService {
 
   User? getCurrentUser() {
     return _firebaseAuth.currentUser;
+  }
+
+  Future<void> signOut() async {
+    await _firebaseAuth.signOut();
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
   }
 
   // existing methods...

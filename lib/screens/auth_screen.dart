@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lnmq/services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lnmq/admin_screens/admin_home_screen.dart';
+import 'package:lnmq/screens/home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,15 +18,47 @@ class _AuthScreenState extends State<AuthScreen> {
   void _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      await _authService.signInWithGoogle();
-      // Sau khi đăng nhập thành công, StreamBuilder trong main.dart sẽ tự điều hướng
+      final user = await _authService.signInWithGoogle();
+      if (user != null) {
+        // Đảm bảo user đã có document trên Firestore
+        final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final doc = await userRef.get();
+
+        // Nếu chưa có, tạo mới với role mặc định là user
+        if (!doc.exists) {
+          await userRef.set({
+            'email': user.email,
+            'displayName': user.displayName,
+            'role': 'user', // hoặc 'admin' nếu bạn muốn test
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        // Lấy lại dữ liệu user sau khi chắc chắn đã có
+        final data = (await userRef.get()).data();
+        print('User data: $data');
+        if (data != null && data['role'] == 'admin') {
+          // chuyển vào AdminHomeScreen
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const AdminHomeScreen()),
+            );
+          }
+        } else {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          }
+        }
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi đăng nhập Google: $e')),
       );
     } finally {
-      setState(() => _isLoading = false);
-    }
+  if (mounted) setState(() => _isLoading = false);
+}
   }
 
   @override

@@ -13,7 +13,13 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await GoogleSignIn().signOut();
+    final googleSignIn = GoogleSignIn();
+    try {
+      await googleSignIn.disconnect(); // Xóa cache tài khoản Google trên máy
+    } catch (_) {
+      // Có thể không cần xử lý lỗi ở đây
+    }
+    await googleSignIn.signOut();
     await _firebaseAuth.signOut();
   }
 
