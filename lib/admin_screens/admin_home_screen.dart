@@ -3,10 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lnmq/admin_screens/manage_tour_screen.dart';
 import 'package:lnmq/admin_screens/manage_place_screen.dart';
-import 'package:lnmq/admin_screens/manage_user_screen.dart'; // THÊM IMPORT NÀY
+import 'package:lnmq/admin_screens/manage_user_screen.dart';
+import 'package:lnmq/admin_screens/manage_review_screen.dart'; // THÊM IMPORT NÀY
 import 'package:lnmq/screens/auth_screen.dart';
 import 'package:lnmq/services/auth_service.dart';
-import 'package:lnmq/admin_screens/admin_chat_screen.dart'; // Thêm dòng này ở đầu file
+import 'package:lnmq/admin_screens/admin_chat_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -80,7 +81,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ManageUserScreen()), // THÊM NAVIGATION NÀY
+                  MaterialPageRoute(builder: (context) => const ManageUserScreen()),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -102,6 +103,23 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
             ),
             const SizedBox(height: 24),
+            
+            // THÊM NÚT QUẢN LÝ ĐÁNH GIÁ
+            ElevatedButton.icon(
+              icon: const Icon(Icons.rate_review),
+              label: const Text('Quản lý đánh giá'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ManageReviewScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
             ElevatedButton.icon(
               icon: const Icon(Icons.chat),
               label: const Text('Quản lý chat'),
