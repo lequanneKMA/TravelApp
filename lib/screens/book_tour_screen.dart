@@ -57,6 +57,27 @@ class _BookTourScreenState extends State<BookTourScreen> {
     }
   }
 
+  // Method để chat với admin (không cần tour cụ thể)
+  void _navigateToGeneralChat(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bạn cần đăng nhập để chat với admin.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TourChatScreen(
+          tourId: 'general_chat', // ID đặc biệt cho chat tổng quát
+          tourName: 'Tư vấn chung',
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _dateStartController.dispose();
@@ -66,13 +87,44 @@ class _BookTourScreenState extends State<BookTourScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Đặt tour')),
+      appBar: AppBar(
+        title: const Text('Đặt tour'),
+        actions: [
+          // Nút Chat với Admin ở AppBar
+          IconButton(
+            icon: const Icon(Icons.support_agent),
+            tooltip: 'Chat với Admin',
+            onPressed: () => _navigateToGeneralChat(context),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
+              // Thêm nút Chat với Admin ở đầu trang
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 24),
+                child: ElevatedButton.icon(
+                  onPressed: () => _navigateToGeneralChat(context),
+                  icon: const Icon(Icons.support_agent, color: Colors.white),
+                  label: const Text(
+                    'Chat với Admin - Tư vấn miễn phí',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 3,
+                  ),
+                ),
+              ),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('tours').snapshots(),
                 builder: (context, snapshot) {

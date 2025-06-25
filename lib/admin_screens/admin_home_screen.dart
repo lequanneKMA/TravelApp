@@ -122,7 +122,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             
             ElevatedButton.icon(
               icon: const Icon(Icons.chat),
-              label: const Text('Quản lý chat'),
+              label: const Text('Quản lý chat & tư vấn'),
               onPressed: () {
                 Navigator.push(
                   context,
