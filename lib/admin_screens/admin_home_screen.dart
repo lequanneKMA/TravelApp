@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lnmq/admin_screens/manage_tour_screen.dart';
 import 'package:lnmq/admin_screens/manage_place_screen.dart';
+import 'package:lnmq/admin_screens/manage_user_screen.dart'; // THÊM IMPORT NÀY
 import 'package:lnmq/screens/auth_screen.dart';
 import 'package:lnmq/services/auth_service.dart';
 import 'package:lnmq/admin_screens/admin_chat_screen.dart'; // Thêm dòng này ở đầu file
@@ -77,7 +78,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               icon: const Icon(Icons.people),
               label: const Text('Quản lý tài khoản'),
               onPressed: () {
-                // TODO: Chuyển sang màn quản lý tài khoản
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ManageUserScreen()), // THÊM NAVIGATION NÀY
+                );
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),

@@ -28,24 +28,43 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
     final TextEditingController maxPriceController = TextEditingController(
       text: place?['maxPrice'] != null ? place!['maxPrice'].toString() : '',
     );
-    File? pickedImageFile;
-    String? imageUrl = place != null && place['imageUrls'] != null && (place['imageUrls'] as List).isNotEmpty
-        ? (place['imageUrls'] as List).first
-        : null;
+    
+    // Danh sách ảnh hiện tại và ảnh mới
+    List<String> existingImageUrls = place != null && place['imageUrls'] != null 
+        ? List<String>.from(place['imageUrls']) 
+        : [];
+    List<File> newImageFiles = [];
+    bool isUploading = false;
 
     // Sử dụng danh mục tập trung từ place_model.dart
     List<String> selectedCategories = place != null && place['categories'] != null
         ? List<String>.from(place['categories'])
         : [];
 
-    Future<void> _pickImage() async {
+    Future<void> _pickImages() async {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-      if (pickedFile != null) {
-        pickedImageFile = File(pickedFile.path);
+      final pickedFiles = await picker.pickMultiImage(imageQuality: 80);
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          newImageFiles.addAll(pickedFiles.map((file) => File(file.path)));
+        });
         // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã chọn ảnh mới.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã chọn ${pickedFiles.length} ảnh mới.'))
+        );
       }
+    }
+
+    void _removeExistingImage(int index) {
+      setState(() {
+        existingImageUrls.removeAt(index);
+      });
+    }
+
+    void _removeNewImage(int index) {
+      setState(() {
+        newImageFiles.removeAt(index);
+      });
     }
 
     showDialog(
@@ -57,24 +76,181 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 120,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey),
-                    ),
-                    child: pickedImageFile != null
-                        ? Image.file(pickedImageFile!, fit: BoxFit.cover)
-                        : (imageUrl != null
-                            ? Image.network(imageUrl, fit: BoxFit.cover)
-                            : const Icon(Icons.add_a_photo, size: 40, color: Colors.grey)),
+                // Phần hiển thị ảnh
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      // Header với nút thêm ảnh
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Ảnh địa điểm (${existingImageUrls.length + newImageFiles.length})',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _pickImages,
+                                icon: const Icon(Icons.add_photo_alternate, size: 18),
+                                label: const Text('Chọn ảnh'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Grid hiển thị ảnh hiện tại
+                      if (existingImageUrls.isNotEmpty) ...[
+                        const Divider(),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Ảnh hiện tại:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                        Container(
+                          height: 120,
+                          padding: const EdgeInsets.all(8),
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: existingImageUrls.length,
+                            itemBuilder: (context, index) {
+                              return Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        existingImageUrls[index],
+                                        width: 100,
+                                        height: 100,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          width: 100,
+                                          height: 100,
+                                          color: Colors.grey[300],
+                                          child: const Icon(Icons.error),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: GestureDetector(
+                                        onTap: () => _removeExistingImage(index),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                      
+                      // Grid hiển thị ảnh mới
+                      if (newImageFiles.isNotEmpty) ...[
+                        const Divider(),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Ảnh mới thêm:', style: TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                        ),
+                        Container(
+                          height: 120,
+                          padding: const EdgeInsets.all(8),
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: newImageFiles.length,
+                            itemBuilder: (context, index) {
+                              return Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        newImageFiles[index],
+                                        width: 100,
+                                        height: 100,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: GestureDetector(
+                                        onTap: () => _removeNewImage(index),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                      
+                      // Placeholder khi chưa có ảnh
+                      if (existingImageUrls.isEmpty && newImageFiles.isEmpty)
+                        Container(
+                          height: 120,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text('Chưa có ảnh nào', style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                
+                const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Tên địa điểm'),
@@ -88,13 +264,12 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
                   controller: locationController,
                   decoration: const InputDecoration(labelText: 'Vị trí'),
                 ),
+                const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-                    child: Text('Danh mục:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
+                  child: Text('Danh mục:', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: allCategories.map((cat) {
@@ -114,6 +289,7 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: bestTimeController,
                   decoration: const InputDecoration(labelText: 'Thời điểm lý tưởng'),
@@ -146,32 +322,74 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
               child: const Text('Hủy'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                String? uploadImageUrl = imageUrl;
-                if (pickedImageFile != null) {
-                  uploadImageUrl = await _storageService.uploadImage(pickedImageFile!, 'places');
-                }
+              onPressed: isUploading ? null : () async {
+                setState(() {
+                  isUploading = true;
+                });
 
-                final placeData = {
-                  'name': nameController.text,
-                  'description': descController.text,
-                  'location': locationController.text,
-                  'categories': selectedCategories,
-                  'bestTimeToVisit': bestTimeController.text,
-                  'minPrice': int.tryParse(minPriceController.text),
-                  'maxPrice': int.tryParse(maxPriceController.text),
-                  'imageUrls': uploadImageUrl != null ? [uploadImageUrl] : [],
-                };
+                try {
+                  // Upload ảnh mới
+                  List<String> newImageUrls = [];
+                  if (newImageFiles.isNotEmpty) {
+                    for (File imageFile in newImageFiles) {
+                      String? imageUrl = await _storageService.uploadImage(imageFile, 'places');
+                      if (imageUrl != null) {
+                        newImageUrls.add(imageUrl);
+                      }
+                    }
+                  }
 
-                if (place == null) {
-                  await FirebaseFirestore.instance.collection('places').add(placeData);
-                } else {
-                  await FirebaseFirestore.instance.collection('places').doc(place.id).update(placeData);
+                  // Kết hợp ảnh cũ và ảnh mới
+                  List<String> allImageUrls = [...existingImageUrls, ...newImageUrls];
+
+                  final placeData = {
+                    'name': nameController.text,
+                    'description': descController.text,
+                    'location': locationController.text,
+                    'categories': selectedCategories,
+                    'bestTimeToVisit': bestTimeController.text,
+                    'minPrice': int.tryParse(minPriceController.text),
+                    'maxPrice': int.tryParse(maxPriceController.text),
+                    'imageUrls': allImageUrls,
+                  };
+
+                  if (place == null) {
+                    await FirebaseFirestore.instance.collection('places').add(placeData);
+                  } else {
+                    await FirebaseFirestore.instance.collection('places').doc(place.id).update(placeData);
+                  }
+                  
+                  // ignore: use_build_context_synchronously
+                  Navigator.of(context).pop();
+                  // ignore: use_build_context_synchronously
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(place == null ? 'Đã thêm địa điểm thành công!' : 'Đã cập nhật địa điểm thành công!'))
+                  );
+                } catch (e) {
+                  // ignore: use_build_context_synchronously
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e'))
+                  );
+                } finally {
+                  setState(() {
+                    isUploading = false;
+                  });
                 }
-                // ignore: use_build_context_synchronously
-                Navigator.of(context).pop();
               },
-              child: Text(place == null ? 'Lưu' : 'Cập nhật'),
+              child: isUploading 
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Đang lưu...'),
+                      ],
+                    )
+                  : Text(place == null ? 'Lưu' : 'Cập nhật'),
             ),
           ],
         ),
@@ -199,20 +417,48 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
-              final imageUrl = data['imageUrls'] != null && (data['imageUrls'] as List).isNotEmpty
-                  ? (data['imageUrls'] as List).first
-                  : null;
+              final imageUrls = data['imageUrls'] != null ? List<String>.from(data['imageUrls']) : <String>[];
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: ListTile(
-                  leading: imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover),
+                  leading: imageUrls.isNotEmpty
+                      ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(imageUrls[0], width: 56, height: 56, fit: BoxFit.cover),
+                            ),
+                            if (imageUrls.length > 1)
+                              Positioned(
+                                bottom: 2,
+                                right: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '+${imageUrls.length - 1}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                                  ),
+                                ),
+                              ),
+                          ],
                         )
                       : const Icon(Icons.landscape, size: 40, color: Colors.grey),
                   title: Text(data['name'] ?? ''),
-                  subtitle: Text(data['description'] ?? ''),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(data['description'] ?? ''),
+                      if (imageUrls.isNotEmpty)
+                        Text(
+                          '${imageUrls.length} ảnh',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lnmq/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:lnmq/admin_screens/admin_home_screen.dart';
-import 'package:lnmq/screens/home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -37,20 +35,9 @@ class _AuthScreenState extends State<AuthScreen> {
         // Lấy lại dữ liệu user sau khi chắc chắn đã có
         final data = (await userRef.get()).data();
         print('User data: $data');
-        if (data != null && data['role'] == 'admin') {
-          // chuyển vào AdminHomeScreen
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const AdminHomeScreen()),
-            );
-          }
-        } else {
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          }
-        }
+        
+        // Không cần điều hướng thủ công, StreamBuilder trong main.dart sẽ tự động xử lý
+        // khi authStateChanges được trigger
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -180,33 +180,75 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
       ),
       overflow: TextOverflow.ellipsis,
     ),
-    background: Image.network(
-      place.imageUrls != null && place.imageUrls.isNotEmpty
-          ? place.imageUrls.first
-          : 'https://via.placeholder.com/600x400?text=No+Image',
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
+    background: Stack(
+      children: [
+        // Carousel ảnh
+        PageView.builder(
+          itemCount: place.imageUrls.isNotEmpty ? place.imageUrls.length : 1,
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () {
+                // Mở gallery fullscreen khi nhấn vào ảnh
+                _showImageGallery(context, place.imageUrls, index);
+              },
+              child: place.imageUrls.isNotEmpty
+                  ? Image.network(
+                      place.imageUrls[index],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[300],
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.broken_image, size: 80, color: Colors.grey),
-                      );
-                    },
-                  ),
-                ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.broken_image, size: 80, color: Colors.grey),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image, size: 80, color: Colors.grey),
+                    ),
+            );
+          },
+        ),
+        
+        // Gradient overlay cho title
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.7),
+                ],
               ),
+            ),
+          ),
+        ),
+ 
+      ],
+    ),
+  ),
+),
               SliverList(
                 delegate: SliverChildListDelegate(
                   [
@@ -533,6 +575,165 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showImageGallery(BuildContext context, List<String> imageUrls, int initialIndex) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black,
+    builder: (context) => ImageGalleryDialog(
+      imageUrls: imageUrls,
+      initialIndex: initialIndex,
+    ),
+  );
+}
+}
+
+class ImageGalleryDialog extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const ImageGalleryDialog({
+    super.key,
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<ImageGalleryDialog> createState() => _ImageGalleryDialogState();
+}
+
+class _ImageGalleryDialogState extends State<ImageGalleryDialog> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.imageUrls.length}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageUrls.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                widget.imageUrls[index],
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image, size: 80, color: Colors.white54),
+                        SizedBox(height: 16),
+                        Text(
+                          'Không thể tải ảnh',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: widget.imageUrls.length > 1
+          ? Container(
+              height: 80,
+              color: Colors.black.withOpacity(0.8),
+              child: Center(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      widget.imageUrls.length,
+                      (index) => GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: _currentIndex == index ? Colors.white : Colors.transparent,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.network(
+                              widget.imageUrls[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[800],
+                                  child: const Icon(Icons.broken_image, color: Colors.white54),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

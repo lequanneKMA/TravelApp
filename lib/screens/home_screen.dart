@@ -14,6 +14,7 @@ import 'package:lnmq/screens/book_tour_screen.dart';
 import 'package:lnmq/screens/tour_chat_screen.dart';
 import 'package:lnmq/screens/place_detail_screen.dart';
 import 'package:lnmq/services/review_service.dart';
+import 'package:lnmq/screens/all_recommendations_screen.dart'; // Import màn hình xem tất cả gợi ý
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -215,7 +216,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // Navigate to see all recommendations
+                            // Navigate to see all recommendations - THÊM TÍNH NĂNG NÀY
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AllRecommendationsScreen(places: places),
+                              ),
+                            );
                           },
                           child: const Text(
                             'Xem thêm',
@@ -519,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(Icons.search, color: Colors.grey, size: 26),
                         SizedBox(width: 10),
                         Text(
-                          'Search',
+                          'Tìm kiếm địa điểm',
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                       ],
@@ -528,27 +535,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25), // Shadow cho nút filter
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.tune, color: Colors.white),
-                  onPressed: () {
-                    // Xử lý filter nếu muốn
-                  },
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),

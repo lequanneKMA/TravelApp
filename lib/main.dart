@@ -39,14 +39,23 @@ class MyApp extends StatelessWidget {
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(), // Lắng nghe sự thay đổi trạng thái Auth
         builder: (context, snapshot) {
+          print('StreamBuilder state: ${snapshot.connectionState}');
+          print('Has data: ${snapshot.hasData}');
+          print('User: ${snapshot.data?.email}');
+          print('Email verified: ${snapshot.data?.emailVerified}');
+          
           if (snapshot.connectionState == ConnectionState.waiting) {
             // Đang chờ kết nối hoặc kiểm tra trạng thái ban đầu
-            return const Center(child: CircularProgressIndicator());
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (snapshot.hasError) {
             // Xử lý lỗi nếu có
             print('Lỗi trong StreamBuilder của main.dart: ${snapshot.error}');
-            return Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}'));
+            return Scaffold(
+              body: Center(child: Text('Đã xảy ra lỗi: ${snapshot.error}')),
+            );
           }
 
           if (snapshot.hasData) {
@@ -57,14 +66,16 @@ class MyApp extends StatelessWidget {
               // Lấy role từ Firestore
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
                   }
-                  if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+                  if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
                     return const HomeScreen(); // fallback
                   }
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final data = userSnapshot.data!.data() as Map<String, dynamic>;
                   if (data['role'] == 'admin') {
                     return const AdminHomeScreen();
                   }
@@ -72,14 +83,8 @@ class MyApp extends StatelessWidget {
                 },
               );
             } else if (user != null && !user.emailVerified) {
-              // Nếu có người dùng nhưng email chưa được xác minh:
-              // 1. Đăng xuất người dùng để đảm bảo họ không bị "mắc kẹt" trong trạng thái đăng nhập nhưng chưa xác minh.
-              // 2. Hiển thị lại AuthScreen và thông báo cho họ xác minh email.
-              // Lưu ý: Việc signOut() ở đây sẽ kích hoạt lại StreamBuilder,
-              // và lần tới snapshot.hasData sẽ là false, dẫn đến return AuthScreen() ở cuối.
-              // Tuy nhiên, để đảm bảo ngay lập tức quay lại AuthScreen, ta return AuthScreen() ở đây.
-              Future.microtask(() => FirebaseAuth.instance.signOut()); // Đăng xuất bất đồng bộ
-              return const AuthScreen(); // Trở lại màn hình đăng nhập
+              // Nếu có người dùng nhưng email chưa được xác minh, hiển thị AuthScreen
+              return const AuthScreen();
             }
           }
           // Nếu không có người dùng đăng nhập

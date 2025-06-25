@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class AdminChatDetailScreen extends StatefulWidget {
   final String userId;
@@ -155,7 +156,7 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
                                 .add({
                               'senderId': admin!.uid,
                               'senderName': admin!.displayName ?? 'Admin',
-                              'message': 'Vui lòng thanh toán số tiền: ${_amount!.toInt()} VNĐ cho tour "${widget.tourName}". Quét mã QR bên dưới để chuyển khoản.',
+                              'message': 'Vui lòng thanh toán số tiền: ${NumberFormat('#,###', 'vi_VN').format(_amount!.toInt())} VNĐ cho tour "${widget.tourName}". Quét mã QR bên dưới để chuyển khoản.',
                               'qrUrl': qrUrl, 
                               'timestamp': FieldValue.serverTimestamp(),
                               'isAdmin': true,

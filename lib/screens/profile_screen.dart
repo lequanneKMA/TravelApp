@@ -7,11 +7,7 @@ import 'package:lnmq/models/user_model.dart';
 import 'package:lnmq/services/auth_service.dart';
 import 'package:lnmq/services/user_service.dart';
 import 'package:lnmq/services/storage_service.dart';
-import 'package:lnmq/models/review_model.dart';
-import 'package:lnmq/services/review_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,14 +21,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final StorageService _storageService = StorageService();
 
+  // Controllers cho các trường thông tin
   late TextEditingController _displayNameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  late TextEditingController _birthdateController;
+  late TextEditingController _emergencyContactController;
+  late TextEditingController _emergencyPhoneController;
+  late TextEditingController _nationalIdController;
+  late TextEditingController _occupationController;
+  
   File? _pickedImage;
   bool _isLoading = false;
+  String _selectedGender = 'Khác';
+  DateTime? _selectedBirthdate;
+
+  final List<String> _genders = ['Nam', 'Nữ', 'Khác'];
+  final List<String> _travelPreferences = [
+    'Du lịch biển',
+    'Du lịch núi',
+    'Du lịch văn hóa',
+    'Du lịch ẩm thực',
+    'Du lịch phiêu lưu',
+    'Du lịch nghỉ dưỡng',
+    'Du lịch lịch sử',
+    'Du lịch tâm linh'
+  ];
+  List<String> _selectedPreferences = [];
 
   @override
   void initState() {
     super.initState();
     _displayNameController = TextEditingController();
+    _phoneController = TextEditingController();
+    _addressController = TextEditingController();
+    _birthdateController = TextEditingController();
+    _emergencyContactController = TextEditingController();
+    _emergencyPhoneController = TextEditingController();
+    _nationalIdController = TextEditingController();
+    _occupationController = TextEditingController();
     _loadUserProfile();
   }
 
@@ -40,13 +67,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     User? currentUser = _authService.getCurrentUser();
     if (currentUser != null) {
       _userService.getUserData(currentUser.uid).listen((appUser) {
-        if (appUser != null) {
-          if (_displayNameController.text.isEmpty || _displayNameController.text != (appUser.displayName ?? currentUser.displayName)) {
-             _displayNameController.text = appUser.displayName ?? currentUser.displayName ?? '';
+        if (appUser != null && mounted) {
+          _displayNameController.text = appUser.displayName ?? currentUser.displayName ?? '';
+          _phoneController.text = appUser.phoneNumber ?? '';
+          _addressController.text = appUser.address ?? '';
+          _emergencyContactController.text = appUser.emergencyContactName ?? '';
+          _emergencyPhoneController.text = appUser.emergencyContactPhone ?? '';
+          _nationalIdController.text = appUser.nationalId ?? '';
+          _occupationController.text = appUser.occupation ?? '';
+          
+          if (appUser.birthdate != null) {
+            _selectedBirthdate = appUser.birthdate;
+            _birthdateController.text = '${_selectedBirthdate!.day}/${_selectedBirthdate!.month}/${_selectedBirthdate!.year}';
           }
+          
+          _selectedGender = appUser.gender ?? 'Khác';
+          _selectedPreferences = appUser.travelPreferences ?? [];
+          
+          setState(() {});
         }
       });
-      _displayNameController.text = currentUser.displayName ?? '';
+    }
+  }
+
+  Future<void> _selectBirthdate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthdate ?? DateTime(1990),
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _selectedBirthdate) {
+      setState(() {
+        _selectedBirthdate = picked;
+        _birthdateController.text = '${picked.day}/${picked.month}/${picked.year}';
+      });
     }
   }
 
@@ -66,8 +121,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isLoading = true;
     });
 
-    String? newPhotoUrl;
     try {
+      String? newPhotoUrl;
       if (_pickedImage != null) {
         newPhotoUrl = await _storageService.uploadImage(
           _pickedImage!,
@@ -75,29 +130,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
+      // Cập nhật Firebase Auth profile
       await _authService.updateUserProfile(
         displayName: _displayNameController.text.trim(),
         photoUrl: newPhotoUrl,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cập nhật hồ sơ thành công!')),
+      // Cập nhật Firestore user document với thông tin chi tiết
+      await _userService.updateUserProfile(
+        displayName: _displayNameController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        birthdate: _selectedBirthdate,
+        gender: _selectedGender,
+        emergencyContactName: _emergencyContactController.text.trim(),
+        emergencyContactPhone: _emergencyPhoneController.text.trim(),
+        nationalId: _nationalIdController.text.trim(),
+        occupation: _occupationController.text.trim(),
+        travelPreferences: _selectedPreferences,
+        photoUrl: newPhotoUrl,
       );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cập nhật hồ sơ thành công!')),
+        );
+      }
     } catch (e) {
-      print('Lỗi khi cập nhật hồ sơ: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi cập nhật hồ sơ: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khi cập nhật hồ sơ: ${e.toString()}')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
     _displayNameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _birthdateController.dispose();
+    _emergencyContactController.dispose();
+    _emergencyPhoneController.dispose();
+    _nationalIdController.dispose();
+    _occupationController.dispose();
     super.dispose();
   }
 
@@ -105,27 +188,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     User? currentUser = _authService.getCurrentUser();
 
-    if (currentUser == null) {
-      return const Center(child: Text('Bạn cần đăng nhập để xem hồ sơ.'));
-    }
-
     return StreamBuilder<AppUser?>(
-      stream: _userService.getUserData(currentUser.uid),
+      stream: currentUser != null ? _userService.getUserData(currentUser.uid) : null,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && !_isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Lỗi tải dữ liệu hồ sơ: ${snapshot.error}'));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         AppUser? appUser = snapshot.data;
-        String currentDisplayName = currentUser.displayName ?? appUser?.displayName ?? 'Chưa đặt tên';
-        String? currentPhotoUrl = currentUser.photoURL ?? appUser?.photoUrl;
-
-        if (!_isLoading && _displayNameController.text.isEmpty || _displayNameController.text != currentDisplayName) {
-          _displayNameController.text = currentDisplayName;
-        }
+        String? currentPhotoUrl = currentUser?.photoURL ?? appUser?.photoUrl;
 
         return Scaffold(
           appBar: AppBar(
@@ -145,74 +218,243 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Đăng xuất',
                   style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500),
                 ),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                ),
               ),
             ],
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.blueGrey[100],
-                      backgroundImage: _pickedImage != null
-                          ? FileImage(_pickedImage!) as ImageProvider<Object>
-                          : (currentPhotoUrl != null ? NetworkImage(currentPhotoUrl) : null),
-                      child: _pickedImage == null && currentPhotoUrl == null
-                          ? const Icon(Icons.person, size: 60, color: Colors.blueGrey)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),
-                        onPressed: _pickImage,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          shape: const CircleBorder(),
-                          side: BorderSide(color: Colors.grey[300]!),
+                // Avatar section
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.blueGrey[100],
+                        backgroundImage: _pickedImage != null
+                            ? FileImage(_pickedImage!) as ImageProvider<Object>
+                            : (currentPhotoUrl != null ? NetworkImage(currentPhotoUrl) : null),
+                        child: _pickedImage == null && currentPhotoUrl == null
+                            ? const Icon(Icons.person, size: 60, color: Colors.blueGrey)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, color: Colors.blueAccent),
+                          onPressed: _pickImage,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            shape: const CircleBorder(),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 32),
 
+                // Thông tin cơ bản
+                const Text(
+                  'Thông tin cơ bản',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                
                 TextField(
                   controller: _displayNameController,
                   decoration: InputDecoration(
-                    labelText: 'Tên hiển thị',
+                    labelText: 'Tên hiển thị *',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     prefixIcon: const Icon(Icons.person),
                   ),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _updateProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Số điện thoại *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.phone),
+                    hintText: '0901234567',
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3,
-                          ),
-                        )
-                      : const Text('Cập nhật hồ sơ', style: TextStyle(fontSize: 16)),
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Địa chỉ *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.location_on),
+                    hintText: 'Số nhà, đường, quận/huyện, tỉnh/thành phố',
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+
+                // Ngày sinh và giới tính
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _birthdateController,
+                        readOnly: true,
+                        onTap: _selectBirthdate,
+                        decoration: InputDecoration(
+                          labelText: 'Ngày sinh',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.calendar_today),
+                          hintText: 'DD/MM/YYYY',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedGender,
+                        decoration: InputDecoration(
+                          labelText: 'Giới tính',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.people),
+                        ),
+                        items: _genders.map((gender) {
+                          return DropdownMenuItem(value: gender, child: Text(gender));
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedGender = value!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _occupationController,
+                  decoration: InputDecoration(
+                    labelText: 'Nghề nghiệp',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.work),
+                    hintText: 'Sinh viên, Nhân viên văn phòng, Giáo viên...',
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Thông tin liên hệ khẩn cấp
+                const Text(
+                  'Liên hệ khẩn cấp',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _emergencyContactController,
+                  decoration: InputDecoration(
+                    labelText: 'Tên người liên hệ khẩn cấp',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.contact_emergency),
+                    hintText: 'Họ tên người thân',
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _emergencyPhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Số điện thoại khẩn cấp',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.phone_in_talk),
+                    hintText: '0901234567',
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Thông tin bổ sung
+                const Text(
+                  'Thông tin bổ sung',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _nationalIdController,
+                  decoration: InputDecoration(
+                    labelText: 'Số CCCD/CMND',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    prefixIcon: const Icon(Icons.badge),
+                    hintText: '123456789012',
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Sở thích du lịch
+                const Text(
+                  'Sở thích du lịch',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: _travelPreferences.map((preference) {
+                    final isSelected = _selectedPreferences.contains(preference);
+                    return FilterChip(
+                      label: Text(preference),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedPreferences.add(preference);
+                          } else {
+                            _selectedPreferences.remove(preference);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 32),
+
+                // Nút cập nhật
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _updateProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 3,
+                            ),
+                          )
+                        : const Text('Cập nhật hồ sơ', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                const Text(
+                  '* Thông tin bắt buộc\n'
+                  'Thông tin này sẽ giúp chúng tôi hỗ trợ bạn tốt hơn trong quá trình du lịch.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
@@ -220,33 +462,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
-  }
-}
-
-class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-
-  User? getCurrentUser() {
-    return _firebaseAuth.currentUser;
-  }
-
-  Future<void> signOut() async {
-    await _firebaseAuth.signOut();
-    try {
-      await GoogleSignIn().signOut();
-    } catch (_) {}
-  }
-
-  // existing methods...
-
-  Future<void> updateUserProfile({String? displayName, String? photoUrl}) async {
-    User? user = _firebaseAuth.currentUser;
-    if (user != null) {
-      await user.updateDisplayName(displayName);
-      if (photoUrl != null) {
-        await user.updatePhotoURL(photoUrl);
-      }
-      await user.reload();
-    }
   }
 }

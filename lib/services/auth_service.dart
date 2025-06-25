@@ -23,6 +23,23 @@ class AuthService {
     await _firebaseAuth.signOut();
   }
 
+  Future<void> updateUserProfile({
+    String? displayName,
+    String? photoUrl,
+  }) async {
+    User? user = _firebaseAuth.currentUser;
+    if (user != null) {
+      if (displayName != null) {
+        await user.updateDisplayName(displayName);
+      }
+      if (photoUrl != null) {
+        await user.updatePhotoURL(photoUrl);
+      }
+      // Reload user để cập nhật thông tin
+      await user.reload();
+    }
+  }
+
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -47,7 +64,13 @@ class AuthService {
             displayName: user.displayName ?? '',
             photoUrl: user.photoURL,
             favoritePlaceIds: [],
+            createdAt: DateTime.now(), // Thêm createdAt
           ).toFirestore());
+        } else {
+          // Cập nhật lastLoginAt nếu user đã tồn tại
+          await _firestore.collection('users').doc(user.uid).update({
+            'lastLoginAt': FieldValue.serverTimestamp(),
+          });
         }
       }
       return user;
@@ -56,4 +79,66 @@ class AuthService {
       rethrow;
     }
   }
+
+  Future<User?> signUpWithEmailPassword(String email, String password, String displayName) async {
+    try {
+      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
+
+      if (user != null) {
+        // Cập nhật display name
+        await user.updateDisplayName(displayName);
+        await user.reload();
+
+        // Tạo document người dùng
+        await _firestore.collection('users').doc(user.uid).set(AppUser(
+          uid: user.uid,
+          email: email,
+          displayName: displayName,
+          favoritePlaceIds: [],
+          createdAt: DateTime.now(),
+        ).toFirestore());
+      }
+      return user;
+    } catch (e) {
+      print('Lỗi đăng ký: $e');
+      rethrow;
+    }
+  }
+
+  Future<User?> signInWithEmailPassword(String email, String password) async {
+    try {
+      UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
+
+      if (user != null) {
+        // Cập nhật lastLoginAt
+        await _firestore.collection('users').doc(user.uid).update({
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return user;
+    } catch (e) {
+      print('Lỗi đăng nhập: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      print('Lỗi reset password: $e');
+      rethrow;
+    }
+  }
+
+  // Stream để theo dõi auth state changes
+  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 }
