@@ -635,7 +635,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.home),
             activeIcon: Icon(Icons.home, color: Colors.blueAccent),
             label: 'Trang chủ',
-          ),
+          ), 
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite),
             activeIcon: Icon(Icons.favorite),

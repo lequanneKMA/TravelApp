@@ -1,4 +1,3 @@
-// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +6,7 @@ import 'package:lnmq/models/user_model.dart';
 import 'package:lnmq/services/auth_service.dart';
 import 'package:lnmq/services/user_service.dart';
 import 'package:lnmq/services/storage_service.dart';
+import 'package:lnmq/screens/user_invoice_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -447,6 +447,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           )
                         : const Text('Cập nhật hồ sơ', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Nút xem hóa đơn
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UserInvoiceScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.receipt_long),
+                    label: const Text('Xem hóa đơn của tôi'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

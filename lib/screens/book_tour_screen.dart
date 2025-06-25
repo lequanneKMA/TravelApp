@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:lnmq/screens/tour_chat_screen.dart'; // Thêm dòng này
+import 'package:lnmq/screens/tour_chat_screen.dart';
+import 'package:lnmq/services/booking_service.dart';
+import 'package:lnmq/models/booking_model.dart';
 
 class BookTourScreen extends StatefulWidget {
   const BookTourScreen({super.key});
@@ -13,6 +15,7 @@ class BookTourScreen extends StatefulWidget {
 
 class _BookTourScreenState extends State<BookTourScreen> {
   final _formKey = GlobalKey<FormState>();
+  final BookingService _bookingService = BookingService();
   String? _selectedTourId;
   String? _selectedTourName;
   String? _selectedTourDescription;
@@ -28,32 +31,44 @@ class _BookTourScreenState extends State<BookTourScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      await FirebaseFirestore.instance.collection('booked_tours').add({
-        'userId': user?.uid,
-        'tourId': _selectedTourId,
-        'tourName': _selectedTourName,
-        'dateStart': _dateStartController.text.trim(),
-        'numPeople': _numPeople,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đặt tour thành công!')),
+      if (user == null) {
+        throw Exception('Bạn cần đăng nhập để đặt tour');
+      }
+
+      final totalPrice = (_selectedTourPrice ?? 0) * _numPeople;
+
+      final bookingId = await _bookingService.createBooking(
+        tourId: _selectedTourId!,
+        tourName: _selectedTourName!,
+        dateStart: _dateStartController.text.trim(),
+        numPeople: _numPeople,
+        totalPrice: totalPrice,
       );
-      setState(() {
-        _selectedTourId = null;
-        _selectedTourName = null;
-        _selectedTourDescription = null;
-        _selectedTourPrice = null;
-        _selectedTourItinerary = null;
-        _numPeople = 1;
-      });
-      _dateStartController.clear();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đặt tour thành công! Vui lòng chờ admin xác nhận.')),
+        );
+        setState(() {
+          _selectedTourId = null;
+          _selectedTourName = null;
+          _selectedTourDescription = null;
+          _selectedTourPrice = null;
+          _selectedTourItinerary = null;
+          _numPeople = 1;
+        });
+        _dateStartController.clear();
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -275,18 +290,14 @@ class _BookTourScreenState extends State<BookTourScreen> {
                 'Các tour bạn đã đặt:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('booked_tours')
-                    .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                    .orderBy('createdAt', descending: true)
-                    .snapshots(),
+              StreamBuilder<List<Booking>>(
+                stream: _bookingService.getUserBookings(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final docs = snapshot.data!.docs;
-                  if (docs.isEmpty) {
+                  final bookings = snapshot.data!;
+                  if (bookings.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Bạn chưa đặt tour nào.'),
@@ -295,14 +306,37 @@ class _BookTourScreenState extends State<BookTourScreen> {
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: docs.length,
+                    itemCount: bookings.length,
                     itemBuilder: (context, index) {
-                      final data = docs[index].data() as Map<String, dynamic>;
+                      final booking = bookings[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         child: ListTile(
-                          title: Text(data['tourName'] ?? 'Không rõ tên'),
-                          subtitle: Text('Ngày đi: ${data['dateStart'] ?? ''}\nSố người: ${data['numPeople'] ?? 1}'),
+                          title: Text(booking.tourName),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Ngày đi: ${booking.dateStart}'),
+                              Text('Số người: ${booking.numPeople}'),
+                              Text('Tổng tiền: ${booking.formattedTotalPrice} VNĐ'),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse('0xFF${booking.statusColor.substring(1)}')),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  booking.statusName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          isThreeLine: true,
                           trailing: IconButton(
                             icon: const Icon(Icons.chat_bubble_outline, color: Colors.blueAccent),
                             tooltip: 'Chat với admin về tour này',
@@ -311,8 +345,8 @@ class _BookTourScreenState extends State<BookTourScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => TourChatScreen(
-                                    tourId: data['tourId'],
-                                    tourName: data['tourName'],
+                                    tourId: booking.tourId,
+                                    tourName: booking.tourName,
                                   ),
                                 ),
                               );
