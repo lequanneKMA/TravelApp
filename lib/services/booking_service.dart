@@ -289,7 +289,6 @@ class BookingService {
     String paymentMethod, {
     String? adminNotes,
   }) async {
-    // Import InvoiceService ở đầu file
     final invoiceService = InvoiceService();
     
     // Cập nhật booking
@@ -300,29 +299,16 @@ class BookingService {
       adminNotes: adminNotes,
     );
     
-    // Xử lý invoice
+    // Tạo invoice với trạng thái đã xuất (paid)
     try {
       final existingInvoice = await invoiceService.getInvoiceByBookingId(bookingId);
-      if (existingInvoice != null) {
-        // Cập nhật invoice thành paid
-        await invoiceService.updateInvoiceStatus(
-          existingInvoice.id,
-          'paid',
-          paidDate: DateTime.now(),
-          paymentMethod: paymentMethod,
-        );
-      } else {
-        // Tạo invoice mới với trạng thái paid
-        final invoiceId = await invoiceService.createInvoiceFromBooking(bookingId);
-        await invoiceService.updateInvoiceStatus(
-          invoiceId,
-          'paid',
-          paidDate: DateTime.now(),
-          paymentMethod: paymentMethod,
-        );
+      if (existingInvoice == null) {
+        // Tạo invoice mới - sẽ được tạo với trạng thái 'paid' mặc định
+        await invoiceService.createInvoiceFromBooking(bookingId);
       }
+      // Không cần update status vì invoice đã được tạo với status 'paid'
     } catch (e) {
-      print('Error syncing invoice: $e');
+      print('Error creating invoice: $e');
     }
   }
 

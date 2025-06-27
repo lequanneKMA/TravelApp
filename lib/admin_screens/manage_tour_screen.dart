@@ -10,6 +10,15 @@ class ManageTourScreen extends StatefulWidget {
 }
 
 class _ManageTourScreenState extends State<ManageTourScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _showTourDialog({DocumentSnapshot? tour}) {
     final TextEditingController nameController = TextEditingController(text: tour?['name'] ?? '');
     final TextEditingController descController = TextEditingController(text: tour?['description'] ?? '');
@@ -84,19 +93,101 @@ class _ManageTourScreenState extends State<ManageTourScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quản lý Tour')),
+      appBar: AppBar(
+        title: const Text('Quản lý Tour'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm tour theo tên hoặc mô tả...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+        ),
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('tours').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final tours = snapshot.data!.docs;
-          if (tours.isEmpty) {
-            return const Center(child: Text('Chưa có tour nào.'));
+          
+          final allTours = snapshot.data!.docs;
+          
+          // Lọc tours theo từ khóa tìm kiếm
+          final filteredTours = allTours.where((tour) {
+            if (_searchQuery.isEmpty) return true;
+            
+            final name = (tour['name'] ?? '').toString().toLowerCase();
+            final description = (tour['description'] ?? '').toString().toLowerCase();
+            
+            return name.contains(_searchQuery) || description.contains(_searchQuery);
+          }).toList();
+          
+          if (filteredTours.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _searchQuery.isEmpty ? Icons.tour : Icons.search_off,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _searchQuery.isEmpty 
+                        ? 'Chưa có tour nào.' 
+                        : 'Không tìm thấy tour phù hợp.',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  if (_searchQuery.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                      },
+                      child: const Text('Xóa bộ lọc'),
+                    ),
+                  ],
+                ],
+              ),
+            );
           }
+          
           return ListView.builder(
-            itemCount: tours.length,
+            itemCount: filteredTours.length,
             itemBuilder: (context, index) {
-              final tour = tours[index];              return ListTile(
+              final tour = filteredTours[index];              return ListTile(
                 title: Text(tour['name'] ?? ''),
                 subtitle: Text('Giá: ${tour['price'] != null ? NumberFormat('#,###', 'vi_VN').format(tour['price']) : ''} VNĐ\n${tour['description'] ?? ''}'),
                 isThreeLine: true,

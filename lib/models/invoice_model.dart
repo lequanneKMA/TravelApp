@@ -51,14 +51,14 @@ class Invoice {
   final String userPhone;
   final String userAddress;
   final String invoiceNumber;
+  final String tourName; // Thêm field tourName để tiện hiển thị
   final DateTime issueDate;
-  final DateTime dueDate;
   final List<InvoiceItem> items;
   final int subtotal;
   final int discount;
   final int tax;
   final int totalAmount;
-  final String status; // 'unpaid', 'paid'
+  final String status; // Luôn là 'paid' - đã xuất hóa đơn
   final String? paymentMethod;
   final DateTime? paidDate;
   final String? notes;
@@ -73,14 +73,14 @@ class Invoice {
     required this.userPhone,
     required this.userAddress,
     required this.invoiceNumber,
+    required this.tourName,
     required this.issueDate,
-    required this.dueDate,
     required this.items,
     required this.subtotal,
     this.discount = 0,
     this.tax = 0,
     required this.totalAmount,
-    this.status = 'unpaid',
+    this.status = 'paid', // Mặc định là đã xuất hóa đơn
     this.paymentMethod,
     this.paidDate,
     this.notes,
@@ -89,26 +89,12 @@ class Invoice {
 
   // Getter để lấy tên trạng thái tiếng Việt
   String get statusName {
-    switch (status) {
-      case 'unpaid':
-        return 'Chưa thanh toán';
-      case 'paid':
-        return 'Đã thanh toán';
-      default:
-        return 'Không xác định';
-    }
+    return 'Đã xuất hóa đơn';
   }
 
   // Getter để lấy màu sắc theo trạng thái
   String get statusColor {
-    switch (status) {
-      case 'unpaid':
-        return '#FF9800'; // Orange
-      case 'paid':
-        return '#4CAF50'; // Green
-      default:
-        return '#607D8B'; // Blue Grey
-    }
+    return '#4CAF50'; // Green - đã xuất hóa đơn
   }
 
   // Getter để format các số tiền
@@ -133,18 +119,9 @@ class Invoice {
     return DateFormat('dd/MM/yyyy').format(issueDate);
   }
 
-  String get formattedDueDate {
-    return DateFormat('dd/MM/yyyy').format(dueDate);
-  }
-
   String get formattedPaidDate {
     if (paidDate == null) return '';
     return DateFormat('dd/MM/yyyy HH:mm').format(paidDate!);
-  }
-
-  // Kiểm tra xem hóa đơn có quá hạn không
-  bool get isOverdue {
-    return status == 'unpaid' && DateTime.now().isAfter(dueDate);
   }
 
   // Factory method để tạo từ Firestore DocumentSnapshot
@@ -167,14 +144,14 @@ class Invoice {
       userPhone: data['userPhone'] ?? '',
       userAddress: data['userAddress'] ?? '',
       invoiceNumber: data['invoiceNumber'] ?? '',
+      tourName: data['tourName'] ?? '',
       issueDate: (data['issueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      dueDate: (data['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       items: itemList,
       subtotal: data['subtotal'] ?? 0,
       discount: data['discount'] ?? 0,
       tax: data['tax'] ?? 0,
       totalAmount: data['totalAmount'] ?? 0,
-      status: data['status'] ?? 'unpaid',
+      status: data['status'] ?? 'paid',
       paymentMethod: data['paymentMethod'],
       paidDate: (data['paidDate'] as Timestamp?)?.toDate(),
       notes: data['notes'],
@@ -192,8 +169,8 @@ class Invoice {
       'userPhone': userPhone,
       'userAddress': userAddress,
       'invoiceNumber': invoiceNumber,
+      'tourName': tourName,
       'issueDate': Timestamp.fromDate(issueDate),
-      'dueDate': Timestamp.fromDate(dueDate),
       'items': items.map((item) => item.toMap()).toList(),
       'subtotal': subtotal,
       'discount': discount,
@@ -217,8 +194,8 @@ class Invoice {
     String? userPhone,
     String? userAddress,
     String? invoiceNumber,
+    String? tourName,
     DateTime? issueDate,
-    DateTime? dueDate,
     List<InvoiceItem>? items,
     int? subtotal,
     int? discount,
@@ -239,8 +216,8 @@ class Invoice {
       userPhone: userPhone ?? this.userPhone,
       userAddress: userAddress ?? this.userAddress,
       invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+      tourName: tourName ?? this.tourName,
       issueDate: issueDate ?? this.issueDate,
-      dueDate: dueDate ?? this.dueDate,
       items: items ?? this.items,
       subtotal: subtotal ?? this.subtotal,
       discount: discount ?? this.discount,

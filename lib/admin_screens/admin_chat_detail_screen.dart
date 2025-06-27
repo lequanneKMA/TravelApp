@@ -35,12 +35,12 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty || admin == null) return;
     
-    // SỬA: Tạo chatId từ userId và tourId
     final chatId = '${widget.userId}_${widget.tourId}';
     
+    // Gửi tin nhắn
     await FirebaseFirestore.instance
         .collection('tour_chats')
-        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
+        .doc(chatId)
         .collection('messages')
         .add({
       'senderId': admin!.uid,
@@ -49,6 +49,21 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
       'timestamp': FieldValue.serverTimestamp(),
       'isAdmin': true,
     });
+
+    // THÊM: Cập nhật thông tin chat room (không tăng unreadCount vì admin gửi)
+    await FirebaseFirestore.instance
+        .collection('tour_chats')
+        .doc(chatId)
+        .set({
+      'userId': widget.userId,
+      'userName': widget.userName,
+      'tourId': widget.tourId,
+      'tourName': widget.tourName,
+      'lastMessage': text,
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      // Không cập nhật unreadCount vì admin gửi
+    }, SetOptions(merge: true));
+
     _messageController.clear();
   }
 

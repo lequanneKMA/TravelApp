@@ -218,7 +218,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                             children: [
                               _buildInfoRow('Số hóa đơn:', invoice.invoiceNumber),
                               _buildInfoRow('Ngày xuất:', invoice.formattedIssueDate),
-                              _buildInfoRow('Hạn thanh toán:', invoice.formattedDueDate),
                               _buildInfoRow('Trạng thái:', invoice.statusName),
                               if (invoice.paidDate != null)
                                 _buildInfoRow('Ngày thanh toán:', invoice.formattedPaidDate),

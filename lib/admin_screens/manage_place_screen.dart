@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lnmq/models/place_model.dart';
-import 'package:lnmq/services/place_service.dart';
 import 'package:lnmq/services/storage_service.dart';
 
 class ManagePlaceScreen extends StatefulWidget {
@@ -14,8 +13,15 @@ class ManagePlaceScreen extends StatefulWidget {
 }
 
 class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
-  final PlaceService _placeService = PlaceService();
   final StorageService _storageService = StorageService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showPlaceDialog({DocumentSnapshot? place}) {
     final TextEditingController nameController = TextEditingController(text: place?['name'] ?? '');
@@ -404,19 +410,109 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quản lý địa điểm')),
+      appBar: AppBar(
+        title: const Text('Quản lý địa điểm'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm địa điểm theo tên, mô tả hoặc vị trí...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+        ),
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('places').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('Chưa có địa điểm nào.'));
+          
+          final allPlaces = snapshot.data!.docs;
+          
+          // Lọc địa điểm theo từ khóa tìm kiếm
+          final filteredPlaces = allPlaces.where((place) {
+            if (_searchQuery.isEmpty) return true;
+            
+            final data = place.data() as Map<String, dynamic>;
+            final name = (data['name'] ?? '').toString().toLowerCase();
+            final description = (data['description'] ?? '').toString().toLowerCase();
+            final location = (data['location'] ?? '').toString().toLowerCase();
+            final categories = data['categories'] != null 
+                ? (data['categories'] as List).join(' ').toLowerCase()
+                : '';
+            
+            return name.contains(_searchQuery) || 
+                   description.contains(_searchQuery) || 
+                   location.contains(_searchQuery) ||
+                   categories.contains(_searchQuery);
+          }).toList();
+          
+          if (filteredPlaces.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _searchQuery.isEmpty ? Icons.landscape : Icons.search_off,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _searchQuery.isEmpty 
+                        ? 'Chưa có địa điểm nào.' 
+                        : 'Không tìm thấy địa điểm phù hợp.',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  if (_searchQuery.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                      },
+                      child: const Text('Xóa bộ lọc'),
+                    ),
+                  ],
+                ],
+              ),
+            );
           }
+          
           return ListView.builder(
-            itemCount: docs.length,
+            itemCount: filteredPlaces.length,
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
+              final data = filteredPlaces[index].data() as Map<String, dynamic>;
               final imageUrls = data['imageUrls'] != null ? List<String>.from(data['imageUrls']) : <String>[];
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -464,12 +560,12 @@ class _ManagePlaceScreenState extends State<ManagePlaceScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                        onPressed: () => _showPlaceDialog(place: docs[index]),
+                        onPressed: () => _showPlaceDialog(place: filteredPlaces[index]),
                         tooltip: 'Sửa',
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () => _deletePlace(docs[index].id),
+                        onPressed: () => _deletePlace(filteredPlaces[index].id),
                         tooltip: 'Xóa',
                       ),
                     ],

@@ -1,7 +1,6 @@
 // lib/admin_screens/invoice_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lnmq/models/invoice_model.dart';
-import 'package:lnmq/services/invoice_service.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   final Invoice invoice;
@@ -13,7 +12,6 @@ class InvoiceDetailScreen extends StatefulWidget {
 }
 
 class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
-  final InvoiceService _invoiceService = InvoiceService();
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -59,61 +57,12 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     );
   }
 
-  void _showPaymentDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận thanh toán'),
-        content: Text('Xác nhận hóa đơn ${widget.invoice.invoiceNumber} đã được thanh toán?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _invoiceService.updateInvoiceStatus(
-                  widget.invoice.id,
-                  'paid',
-                  paidDate: DateTime.now(),
-                  paymentMethod: 'Chuyển khoản',
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  setState(() {}); // Refresh the UI
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã xác nhận thanh toán!')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết hóa đơn'),
-        actions: [
-          if (widget.invoice.status == 'unpaid')
-            IconButton(
-              icon: const Icon(Icons.payment),
-              onPressed: _showPaymentDialog,
-              tooltip: 'Xác nhận thanh toán',
-            ),
-        ],
+        // Bỏ actions vì không còn cần xác nhận thanh toán
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -143,7 +92,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     const SizedBox(height: 16),
                     _buildInfoRow('Số hóa đơn:', widget.invoice.invoiceNumber),
                     _buildInfoRow('Ngày xuất:', widget.invoice.formattedIssueDate),
-                    _buildInfoRow('Hạn thanh toán:', widget.invoice.formattedDueDate),
                     if (widget.invoice.paidDate != null)
                       _buildInfoRow('Ngày thanh toán:', widget.invoice.formattedPaidDate),
                   ],
@@ -299,9 +247,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       ),
                     ),
                     const Divider(),
-                    if (widget.invoice.paymentMethod != null)
-                      _buildInfoRow('Phương thức:', widget.invoice.paymentMethod!),
-                    if (widget.invoice.bankInfo != null)
+                    _buildInfoRow('Phương thức:', 
+                        widget.invoice.paymentMethod ?? 'Chuyển khoản ngân hàng'),
+                    _buildInfoRow('Ngày thanh toán:', 
+                        widget.invoice.formattedPaidDate.isNotEmpty 
+                            ? widget.invoice.formattedPaidDate 
+                            : 'Không có thông tin'),
+                    if (widget.invoice.bankInfo != null && widget.invoice.bankInfo!.isNotEmpty)
                       _buildInfoRow('Thông tin ngân hàng:', widget.invoice.bankInfo!),
                     if (widget.invoice.notes != null && widget.invoice.notes!.isNotEmpty)
                       _buildInfoRow('Ghi chú:', widget.invoice.notes!),

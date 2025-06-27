@@ -32,15 +32,71 @@ class InvoiceService {
       userPhone: booking.userPhone,
       userAddress: '', // Có thể lấy từ user profile nếu có
       invoiceNumber: Invoice.generateInvoiceNumber(),
+      tourName: booking.tourName, // Thêm tourName
       issueDate: DateTime.now(),
-      dueDate: DateTime.now().add(const Duration(days: 7)), // 7 ngày để thanh toán
       items: items,
       subtotal: booking.totalPrice,
       discount: 0,
       tax: 0,
       totalAmount: booking.totalPrice,
-      status: 'unpaid',
+      status: 'paid', // Luôn là đã xuất hóa đơn
+      paymentMethod: 'Chuyển khoản ngân hàng', // Thêm phương thức thanh toán mặc định
+      paidDate: DateTime.now(), // Thời gian xuất hóa đơn
       notes: 'Hóa đơn thanh toán tour du lịch',
+      bankInfo: 'Ngân hàng: Vietcombank\nSố tài khoản: 0123456789\nChủ tài khoản: CÔNG TY DU LỊCH LNMQ', // Thêm thông tin ngân hàng
+    );
+
+    final docRef = await _firestore.collection('invoices').add(invoice.toFirestore());
+    return docRef.id;
+  }
+
+  // Tạo hóa đơn từ booking với thuế và discount tùy chỉnh
+  Future<String> createInvoiceFromBookingWithDetails(String bookingId, {
+    int discount = 0,
+    int tax = 0,
+    String? paymentMethod,
+    String? bankInfo,
+    String? notes,
+  }) async {
+    final booking = await _bookingService.getBookingById(bookingId);
+    if (booking == null) throw Exception('Không tìm thấy booking');
+
+    // Tạo các item cho hóa đơn
+    final items = [
+      InvoiceItem(
+        description: booking.tourName,
+        quantity: booking.numPeople,
+        unitPrice: booking.totalPrice ~/ booking.numPeople,
+        totalPrice: booking.totalPrice,
+      ),
+    ];
+
+    // Tính toán tổng tiền sau thuế và discount
+    final subtotal = booking.totalPrice;
+    final totalAmount = subtotal - discount + tax;
+
+    // Tạo hóa đơn
+    final invoice = Invoice(
+      id: '', // Sẽ được set sau khi add vào Firestore
+      bookingId: bookingId,
+      userId: booking.userId,
+      userName: booking.userName,
+      userEmail: booking.userEmail,
+      userPhone: booking.userPhone,
+      userAddress: '', // Có thể lấy từ user profile nếu có
+      invoiceNumber: Invoice.generateInvoiceNumber(),
+      tourName: booking.tourName, // Thêm tourName
+      issueDate: DateTime.now(),
+      items: items,
+      subtotal: subtotal,
+      discount: discount,
+      tax: tax,
+      totalAmount: totalAmount,
+      status: 'paid', // Luôn là đã xuất hóa đơn
+      paymentMethod: paymentMethod ?? 'Chuyển khoản ngân hàng',
+      paidDate: DateTime.now(), // Thời gian xuất hóa đơn
+      notes: notes ?? 'Hóa đơn thanh toán tour du lịch',
+      bankInfo: bankInfo ?? 'Ngân hàng: Vietcombank\nSố tài khoản: 0123456789\nChủ tài khoản: CÔNG TY DU LỊCH LNMQ',
     );
 
     final docRef = await _firestore.collection('invoices').add(invoice.toFirestore());
@@ -107,47 +163,21 @@ class InvoiceService {
             snapshot.docs.map((doc) => Invoice.fromFirestore(doc)).toList());
   }
 
-  // Lấy hóa đơn theo trạng thái (BỎ orderBy để tránh lỗi index)
+  // Lấy tất cả hóa đơn đã xuất (chỉ có trạng thái 'paid')
   Stream<List<Invoice>> getInvoicesByStatus(String status) {
     return _firestore
         .collection('invoices')
-        .where('status', isEqualTo: status)
-        // BỎ .orderBy('issueDate', descending: true)
+        .where('status', isEqualTo: 'paid') // Luôn lấy hóa đơn đã xuất
         .snapshots()
         .map((snapshot) {
       final invoices = snapshot.docs
           .map((doc) => Invoice.fromFirestore(doc))
           .toList();
       
-      // Sort trong code thay vì Firestore
+      // Sort theo ngày xuất (mới nhất trước)
       invoices.sort((a, b) => b.issueDate.compareTo(a.issueDate));
       return invoices;
     });
-  }
-
-  // Cập nhật trạng thái hóa đơn
-  Future<void> updateInvoiceStatus(
-    String invoiceId,
-    String status, {
-    DateTime? paidDate,
-    String? paymentMethod,
-    String? notes,
-  }) async {
-    final Map<String, dynamic> updateData = {
-      'status': status,
-    };
-
-    if (paidDate != null) {
-      updateData['paidDate'] = Timestamp.fromDate(paidDate);
-    }
-    if (paymentMethod != null) {
-      updateData['paymentMethod'] = paymentMethod;
-    }
-    if (notes != null) {
-      updateData['notes'] = notes;
-    }
-
-    await _firestore.collection('invoices').doc(invoiceId).update(updateData);
   }
 
   // Xóa hóa đơn (chỉ admin)
@@ -206,13 +236,8 @@ class InvoiceService {
 
     final stats = <String, int>{
       'total': invoices.length,
-      'unpaid': 0,
-      'paid': 0,
+      'paid': invoices.length, // Tất cả hóa đơn đều là đã xuất hóa đơn
     };
-
-    for (final invoice in invoices) {
-      stats[invoice.status] = (stats[invoice.status] ?? 0) + 1;
-    }
 
     return stats;
   }

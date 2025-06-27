@@ -6,14 +6,28 @@ import 'package:lnmq/firebase_options.dart';
 import 'package:lnmq/screens/auth_screen.dart';
 import 'package:lnmq/screens/home_screen.dart';
 import 'package:lnmq/admin_screens/admin_home_screen.dart';
+// import 'package:lnmq/utils/migrate_chat_data.dart'; // Sửa đường dẫn
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // THÊM: Chạy migration một lần khi app khởi động (optional)
+  // Uncomment dòng này nếu muốn auto-migrate:
+  // await runMigration();
+  
   runApp(const MyApp());
 }
+
+// Future<void> runMigration() async {
+//   try {
+//     await migrateChatData();
+//   } catch (e) {
+//     print('Lỗi migration: $e');
+//   }
+// }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

@@ -19,32 +19,34 @@ class _TourChatScreenState extends State<TourChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty || user == null) return;
 
-    // SỬA: Tạo chatId riêng cho mỗi tour - userId_tourId
     final chatId = '${user!.uid}_${widget.tourId}';
 
-    // Đảm bảo document cha có đủ trường với chatId mới
+    // Gửi tin nhắn
     await FirebaseFirestore.instance
         .collection('tour_chats')
-        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
-        .set({
-      'tourId': widget.tourId,
-      'tourName': widget.tourName,
-      'userName': user!.displayName ?? user!.email ?? 'Ẩn danh',
-      'userId': user!.uid,
-    }, SetOptions(merge: true));
-
-    // Thêm tin nhắn vào subcollection
-    await FirebaseFirestore.instance
-        .collection('tour_chats')
-        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
+        .doc(chatId)
         .collection('messages')
         .add({
       'senderId': user!.uid,
-      'senderName': user!.displayName ?? user!.email ?? 'Ẩn danh',
+      'senderName': user!.displayName ?? 'Người dùng',
       'message': text,
       'timestamp': FieldValue.serverTimestamp(),
       'isAdmin': false,
     });
+
+    // THÊM: Cập nhật thông tin chat room
+    await FirebaseFirestore.instance
+        .collection('tour_chats')
+        .doc(chatId)
+        .set({
+      'userId': user!.uid,
+      'userName': user!.displayName ?? 'Người dùng',
+      'tourId': widget.tourId,
+      'tourName': widget.tourName,
+      'lastMessage': text, // Tin nhắn cuối cùng
+      'lastMessageAt': FieldValue.serverTimestamp(), // Thời gian tin nhắn cuối
+      'unreadCount': FieldValue.increment(1), // Tăng số tin nhắn chưa đọc
+    }, SetOptions(merge: true));
 
     _messageController.clear();
   }

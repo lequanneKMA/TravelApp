@@ -122,12 +122,6 @@ class _UserInvoiceScreenState extends State<UserInvoiceScreen> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        Text(
-                          'Hạn thanh toán: ${invoice.formattedDueDate}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                          ),
-                        ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -148,54 +142,32 @@ class _UserInvoiceScreenState extends State<UserInvoiceScreen> {
                             ),
                           ],
                         ),
-                        if (invoice.isOverdue)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(top: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.red[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.warning, color: Colors.red, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Hóa đơn đã quá hạn thanh toán',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        // Luôn hiển thị đã xuất hóa đơn
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(top: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green),
                           ),
-                        if (invoice.paidDate != null)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(top: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.green[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Đã thanh toán: ${invoice.formattedPaidDate}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                invoice.paidDate != null 
+                                    ? 'Đã xuất hóa đơn: ${invoice.formattedPaidDate}'
+                                    : 'Đã xuất hóa đơn: ${invoice.formattedIssueDate}',
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
                   ),
