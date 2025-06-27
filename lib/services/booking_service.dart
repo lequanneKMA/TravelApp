@@ -18,7 +18,7 @@ class BookingService {
     String? notes,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('Người dùng chưa đăng nhập');
+    if (user == null) throw Exception('Chưa login');
 
     // Lấy thông tin user từ Firestore - SỬA LẠI
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -32,9 +32,9 @@ class BookingService {
       userId: user.uid,
       tourId: tourId,
       tourName: tourName,
-      userName: appUser?.displayName ?? user.displayName ?? 'Người dùng', // SỬA LẠI
-      userEmail: appUser?.email ?? user.email ?? '', // SỬA LẠI
-      userPhone: appUser?.phoneNumber ?? '', // SỬA LẠI
+      userName: appUser?.displayName ?? user.displayName ?? 'Người dùng',
+      userEmail: appUser?.email ?? user.email ?? '',
+      userPhone: appUser?.phoneNumber ?? '',
       dateStart: dateStart,
       numPeople: numPeople,
       totalPrice: totalPrice,
@@ -296,23 +296,4 @@ class BookingService {
     }
   }
 
-  // Method để tạo dữ liệu mẫu cho testing
-  Future<void> createSampleBooking() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      await createBooking(
-        tourId: 'sample_tour_1',
-        tourName: 'Tour Đà Lạt 3N2Đ',
-        dateStart: '15/12/2024',
-        numPeople: 2,
-        totalPrice: 3000000,
-        notes: 'Booking mẫu để test',
-      );
-      print('Sample booking created successfully');
-    } catch (e) {
-      print('Error creating sample booking: $e');
-    }
-  }
 }
