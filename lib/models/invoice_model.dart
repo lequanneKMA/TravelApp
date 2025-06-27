@@ -58,7 +58,7 @@ class Invoice {
   final int discount;
   final int tax;
   final int totalAmount;
-  final String status; // 'unpaid', 'paid', 'overdue', 'canceled'
+  final String status; // 'unpaid', 'paid'
   final String? paymentMethod;
   final DateTime? paidDate;
   final String? notes;
@@ -94,10 +94,6 @@ class Invoice {
         return 'Chưa thanh toán';
       case 'paid':
         return 'Đã thanh toán';
-      case 'overdue':
-        return 'Quá hạn';
-      case 'canceled':
-        return 'Đã hủy';
       default:
         return 'Không xác định';
     }
@@ -110,10 +106,6 @@ class Invoice {
         return '#FF9800'; // Orange
       case 'paid':
         return '#4CAF50'; // Green
-      case 'overdue':
-        return '#F44336'; // Red
-      case 'canceled':
-        return '#9E9E9E'; // Grey
       default:
         return '#607D8B'; // Blue Grey
     }

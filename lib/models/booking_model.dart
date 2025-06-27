@@ -3,10 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 enum BookingStatus {
-  pending,     // Chờ xử lý
+  pending,     // Đang chờ
   paid,        // Đã thanh toán
-  confirmed,   // Đã xác nhận
-  canceled,    // Đã hủy
   completed,   // Đã hoàn thành
 }
 
@@ -53,13 +51,9 @@ class Booking {
   String get statusName {
     switch (status) {
       case BookingStatus.pending:
-        return 'Chờ xử lý';
+        return 'Đang chờ';
       case BookingStatus.paid:
         return 'Đã thanh toán';
-      case BookingStatus.confirmed:
-        return 'Đã xác nhận';
-      case BookingStatus.canceled:
-        return 'Đã hủy';
       case BookingStatus.completed:
         return 'Đã hoàn thành';
     }
@@ -71,11 +65,7 @@ class Booking {
       case BookingStatus.pending:
         return '#FF9800'; // Orange
       case BookingStatus.paid:
-        return '#2196F3'; // Blue
-      case BookingStatus.confirmed:
         return '#4CAF50'; // Green
-      case BookingStatus.canceled:
-        return '#F44336'; // Red
       case BookingStatus.completed:
         return '#9C27B0'; // Purple
     }

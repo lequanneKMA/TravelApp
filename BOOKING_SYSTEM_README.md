@@ -4,16 +4,14 @@
 
 ### 1. Hệ thống trạng thái booking (đặt tour)
 - **Trạng thái đơn hàng:**
-  - `pending` (Chờ xử lý): Đơn mới được tạo, chờ admin xác nhận
-  - `paid` (Đã thanh toán): Khách hàng đã thanh toán, chờ admin xác nhận
-  - `confirmed` (Đã xác nhận): Admin đã xác nhận, tour được đảm bảo
-  - `canceled` (Đã hủy): Đơn bị hủy bởi khách hàng hoặc admin
+  - `pending` (Đang chờ): Đơn mới được tạo, chờ thanh toán
+  - `paid` (Đã thanh toán): Khách hàng đã thanh toán, tour được xác nhận
   - `completed` (Đã hoàn thành): Tour đã kết thúc
 
 ### 2. Hệ thống hóa đơn (Invoice)
 - **Tự động tạo hóa đơn** khi booking chuyển sang trạng thái "Đã thanh toán"
 - **Thông tin đầy đủ**: Số hóa đơn, ngày xuất, hạn thanh toán, chi tiết dịch vụ
-- **Trạng thái hóa đơn**: Chưa thanh toán, Đã thanh toán, Quá hạn, Đã hủy
+- **Trạng thái hóa đơn**: Chưa thanh toán, Đã thanh toán
 - **Tự động kiểm tra quá hạn** và cập nhật trạng thái
 
 ### 3. Giao diện quản lý cho Admin
@@ -40,7 +38,7 @@
   "dateStart": "string",
   "numPeople": "number",
   "totalPrice": "number",
-  "status": "pending|paid|confirmed|canceled|completed",
+  "status": "pending|paid|completed",
   "createdAt": "timestamp",
   "updatedAt": "timestamp",
   "paymentMethod": "string",
@@ -74,7 +72,7 @@
   "discount": "number",
   "tax": "number",
   "totalAmount": "number",
-  "status": "unpaid|paid|overdue|canceled",
+  "status": "unpaid|paid",
   "paymentMethod": "string",
   "paidDate": "timestamp",
   "notes": "string",
@@ -88,16 +86,13 @@
 1. User đặt tour → Tạo booking với status = `pending`
 2. Admin xem booking trong "Quản lý đặt tour"
 3. Admin liên hệ khách hàng qua chat
-4. Khi khách thanh toán → Admin cập nhật status = `paid`
-5. Hệ thống tự động tạo hóa đơn
-6. Admin xác nhận tour → status = `confirmed`
-7. Sau khi tour kết thúc → status = `completed`
+4. Khi khách thanh toán → Admin cập nhật status = `paid` và tự động tạo hóa đơn
+5. Sau khi tour kết thúc → status = `completed`
 
 ### 2. Quản lý hóa đơn:
 1. Hóa đơn được tạo tự động khi booking = `paid`
 2. Admin có thể xem chi tiết, xác nhận thanh toán
-3. Hệ thống tự động kiểm tra quá hạn
-4. User có thể xem hóa đơn của mình trong profile
+3. User có thể xem hóa đơn của mình trong profile
 
 ### 3. Migration dữ liệu:
 - Dữ liệu cũ từ `booked_tours` được chuyển sang `bookings` với cấu trúc mới

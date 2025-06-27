@@ -129,43 +129,25 @@ class InvoiceService {
   Future<void> updateInvoiceStatus(
     String invoiceId,
     String status, {
-    String? paymentMethod,
     DateTime? paidDate,
+    String? paymentMethod,
     String? notes,
   }) async {
-    final updateData = <String, dynamic>{
+    final Map<String, dynamic> updateData = {
       'status': status,
     };
 
-    if (paymentMethod != null) updateData['paymentMethod'] = paymentMethod;
-    if (paidDate != null) updateData['paidDate'] = Timestamp.fromDate(paidDate);
-    if (notes != null) updateData['notes'] = notes;
+    if (paidDate != null) {
+      updateData['paidDate'] = Timestamp.fromDate(paidDate);
+    }
+    if (paymentMethod != null) {
+      updateData['paymentMethod'] = paymentMethod;
+    }
+    if (notes != null) {
+      updateData['notes'] = notes;
+    }
 
     await _firestore.collection('invoices').doc(invoiceId).update(updateData);
-  }
-
-  // Đánh dấu hóa đơn đã thanh toán
-  Future<void> markAsPaid(
-    String invoiceId,
-    String paymentMethod, {
-    String? notes,
-  }) async {
-    await updateInvoiceStatus(
-      invoiceId,
-      'paid',
-      paymentMethod: paymentMethod,
-      paidDate: DateTime.now(),
-      notes: notes,
-    );
-  }
-
-  // Hủy hóa đơn
-  Future<void> cancelInvoice(String invoiceId, {String? reason}) async {
-    await updateInvoiceStatus(
-      invoiceId,
-      'canceled',
-      notes: reason,
-    );
   }
 
   // Xóa hóa đơn (chỉ admin)
@@ -217,23 +199,6 @@ class InvoiceService {
     });
   }
 
-  // Kiểm tra hóa đơn quá hạn và cập nhật trạng thái
-  Future<void> checkOverdueInvoices() async {
-    final now = DateTime.now();
-    final querySnapshot = await _firestore
-        .collection('invoices')
-        .where('status', isEqualTo: 'unpaid')
-        .where('dueDate', isLessThan: Timestamp.fromDate(now))
-        .get();
-
-    final batch = _firestore.batch();
-    for (final doc in querySnapshot.docs) {
-      batch.update(doc.reference, {'status': 'overdue'});
-    }
-
-    await batch.commit();
-  }
-
   // Thống kê hóa đơn
   Future<Map<String, int>> getInvoiceStats() async {
     final snapshot = await _firestore.collection('invoices').get();
@@ -243,8 +208,6 @@ class InvoiceService {
       'total': invoices.length,
       'unpaid': 0,
       'paid': 0,
-      'overdue': 0,
-      'canceled': 0,
     };
 
     for (final invoice in invoices) {

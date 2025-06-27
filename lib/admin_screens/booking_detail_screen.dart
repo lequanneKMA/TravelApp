@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:lnmq/models/booking_model.dart';
 import 'package:lnmq/models/invoice_model.dart';
+import 'package:lnmq/services/booking_service.dart';
 import 'package:lnmq/services/invoice_service.dart';
 import 'package:lnmq/admin_screens/invoice_detail_screen.dart';
 
@@ -16,6 +17,7 @@ class BookingDetailScreen extends StatefulWidget {
 
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   final InvoiceService _invoiceService = InvoiceService();
+  final BookingService _bookingService = BookingService();
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
@@ -240,8 +242,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                             children: [
                               const Text('Chưa có hóa đơn cho booking này'),
                               const SizedBox(height: 16),
-                              if (widget.booking.status == BookingStatus.paid ||
-                                  widget.booking.status == BookingStatus.confirmed)
+                              if (widget.booking.status == BookingStatus.paid)
                                 ElevatedButton.icon(
                                   onPressed: () async {
                                     try {
@@ -272,6 +273,169 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ),
               ),
             ),
+            
+            // THÊM: Nút xác nhận thanh toán
+            if (widget.booking.status == BookingStatus.pending)
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Hành động',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Divider(),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              // Hiển thị dialog xác nhận
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Xác nhận thanh toán'),
+                                  content: Text('Xác nhận khách hàng đã thanh toán cho tour "${widget.booking.tourName}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Hủy'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Xác nhận'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirmed == true) {
+                                try {
+                                  // Sử dụng method đồng bộ để cập nhật booking và invoice
+                                  await _bookingService.confirmPaymentWithInvoiceSync(
+                                    widget.booking.id,
+                                    'Chuyển khoản',
+                                    adminNotes: 'Đã xác nhận thanh toán bởi admin',
+                                  );
+                                  
+                                  if (mounted) {
+                                    // Refresh màn hình bằng cách pop và push lại
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Đã xác nhận thanh toán thành công!')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Lỗi: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.payment),
+                            label: const Text('Xác nhận đã thanh toán'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            
+            // Thêm nút "Hoàn thành tour" nếu đã thanh toán
+            if (widget.booking.status == BookingStatus.paid) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Hoàn thành tour',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Divider(),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Xác nhận hoàn thành'),
+                                content: const Text('Bạn có chắc chắn muốn đánh dấu tour này đã hoàn thành?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Hủy'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Hoàn thành'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              try {
+                                await _bookingService.updateBookingStatus(
+                                  widget.booking.id,
+                                  BookingStatus.completed,
+                                  adminNotes: 'Tour đã hoàn thành',
+                                );
+                                
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Đã đánh dấu tour hoàn thành!')),
+                                  );
+                                  Navigator.pop(context); // Quay lại màn hình trước
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Lỗi: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.check_circle),
+                          label: const Text('Hoàn thành tour'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

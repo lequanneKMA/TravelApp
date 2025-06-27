@@ -35,14 +35,20 @@ class AdminChatScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final chat = chatDocs[index];
               final data = chat.data() as Map<String, dynamic>;
-              final userId = chat.id;
+              
+              // SỬA: Parse chatId để tách riêng theo tour
+              // Format: userId_tourId hoặc userId_general
+              final chatId = chat.id;
+              final parts = chatId.split('_');
+              final userId = parts[0];
+              final tourIdPart = parts.length > 1 ? parts.sublist(1).join('_') : 'general';
 
               final tourName = data['tourName'] ?? 'Không rõ tên';
-              final tourId = data['tourId'] ?? '';
+              final tourId = data['tourId'] ?? tourIdPart;
               final userName = data['userName'] ?? 'Người dùng';
 
               // Kiểm tra nếu là chat tư vấn chung
-              final isGeneralChat = tourId == 'general_chat';
+              final isGeneralChat = tourId == 'general_chat' || tourId == 'general';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -58,12 +64,25 @@ class AdminChatScreen extends StatelessWidget {
                     userName,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(
-                    isGeneralChat ? 'Tư vấn chung' : 'Tour: $tourName',
-                    style: TextStyle(
-                      color: isGeneralChat ? Colors.green[700] : Colors.blue[700],
-                      fontWeight: FontWeight.w500,
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isGeneralChat ? 'Tư vấn chung' : 'Tour: $tourName',
+                        style: TextStyle(
+                          color: isGeneralChat ? Colors.green[700] : Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (!isGeneralChat)
+                        Text(
+                          'Chat ID: $chatId',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
                   ),
                   trailing: Icon(
                     Icons.chat_bubble,

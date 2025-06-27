@@ -48,107 +48,6 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
     );
   }
 
-  void _showStatusUpdateDialog(Booking booking) {
-    BookingStatus selectedStatus = booking.status;
-    final TextEditingController notesController = TextEditingController();
-    final TextEditingController paymentMethodController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Cập nhật trạng thái - ${booking.tourName}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<BookingStatus>(
-                value: selectedStatus,
-                decoration: const InputDecoration(
-                  labelText: 'Trạng thái',
-                  border: OutlineInputBorder(),
-                ),
-                items: BookingStatus.values.map((status) {
-                  return DropdownMenuItem(
-                    value: status,
-                    child: Text(booking.copyWith(status: status).statusName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    selectedStatus = value;
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              if (selectedStatus == BookingStatus.paid || selectedStatus == BookingStatus.confirmed)
-                TextField(
-                  controller: paymentMethodController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phương thức thanh toán',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú của admin',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _bookingService.updateBookingStatus(
-                  booking.id,
-                  selectedStatus,
-                  adminNotes: notesController.text.trim().isEmpty 
-                      ? null 
-                      : notesController.text.trim(),
-                  paymentMethod: paymentMethodController.text.trim().isEmpty 
-                      ? null 
-                      : paymentMethodController.text.trim(),
-                );
-
-                // Tạo hóa đơn nếu trạng thái chuyển thành paid
-                if (selectedStatus == BookingStatus.paid) {
-                  try {
-                    await _invoiceService.createInvoiceFromBooking(booking.id);
-                  } catch (e) {
-                    print('Error creating invoice: $e');
-                  }
-                }
-
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã cập nhật trạng thái thành công!')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Cập nhật'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,8 +70,6 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                         Text('Tổng số booking: ${stats['total']}'),
                         Text('Chờ xử lý: ${stats['pending']}'),
                         Text('Đã thanh toán: ${stats['paid']}'),
-                        Text('Đã xác nhận: ${stats['confirmed']}'),
-                        Text('Đã hủy: ${stats['canceled']}'),
                         Text('Đã hoàn thành: ${stats['completed']}'),
                       ],
                     ),
@@ -320,29 +217,21 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                               child: Text('Xem chi tiết'),
                             ),
                             const PopupMenuItem(
-                              value: 'update',
-                              child: Text('Cập nhật trạng thái'),
+                              value: 'delete',
+                              child: Text('Xóa'),
                             ),
-                            if (booking.status == BookingStatus.pending)
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Xóa'),
-                              ),
                           ],
                           onSelected: (value) async {
                             switch (value) {
                               case 'view':
                                 _showBookingDetail(booking);
                                 break;
-                              case 'update':
-                                _showStatusUpdateDialog(booking);
-                                break;
                               case 'delete':
                                 final confirmed = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
                                     title: const Text('Xác nhận xóa'),
-                                    content: const Text('Bạn có chắc chắn muốn xóa booking này?'),
+                                    content: Text('Bạn có chắc chắn muốn xóa booking "${booking.tourName}" của khách hàng ${booking.userName}?'),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(context, false),
@@ -350,6 +239,10 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                                       ),
                                       ElevatedButton(
                                         onPressed: () => Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                          foregroundColor: Colors.white,
+                                        ),
                                         child: const Text('Xóa'),
                                       ),
                                     ],

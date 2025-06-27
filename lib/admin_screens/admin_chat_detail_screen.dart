@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:lnmq/services/booking_service.dart';
 
 class AdminChatDetailScreen extends StatefulWidget {
   final String userId;
@@ -23,6 +24,7 @@ class AdminChatDetailScreen extends StatefulWidget {
 class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final admin = FirebaseAuth.instance.currentUser;
+  final BookingService _bookingService = BookingService();
   double? _amount;
   final TextEditingController _amountController = TextEditingController();
   final String bankId = 'TPB'; // Mã ngân hàng (TPBank)
@@ -32,9 +34,13 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
   void _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || admin == null) return;
+    
+    // SỬA: Tạo chatId từ userId và tourId
+    final chatId = '${widget.userId}_${widget.tourId}';
+    
     await FirebaseFirestore.instance
         .collection('tour_chats')
-        .doc(widget.userId)
+        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
         .collection('messages')
         .add({
       'senderId': admin!.uid,
@@ -69,11 +75,210 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
               ],
             ),
           ),
+          
+          // THÊM: Hiển thị số tiền cần thanh toán
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('bookings')
+                .where('userId', isEqualTo: widget.userId)
+                .where('tourId', isEqualTo: widget.tourId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                // Sort và lấy booking mới nhất trong code
+                final sortedDocs = snapshot.data!.docs.toList();
+                sortedDocs.sort((a, b) {
+                  final aData = a.data() as Map<String, dynamic>;
+                  final bData = b.data() as Map<String, dynamic>;
+                  final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  return bTime.compareTo(aTime); // Mới nhất trước
+                });
+                
+                final booking = sortedDocs.first.data() as Map<String, dynamic>;
+                final totalPrice = booking['totalPrice'] ?? 0;
+                
+                return Container(
+                  width: double.infinity,
+                  color: Colors.green[50],
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.attach_money, color: Colors.green[700], size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Số tiền cần thanh toán:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green[700],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${NumberFormat('#,###', 'vi_VN').format(totalPrice)} VNĐ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.green[800],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _amount = totalPrice.toDouble();
+                                  _amountController.text = totalPrice.toString();
+                                  // Gửi tin nhắn QR cho user
+                                  if (admin != null) {
+                                    final qrUrl =
+                                        'https://img.vietqr.io/image/$bankId-$account-print.png?amount=${totalPrice.toInt()}&addInfo=${Uri.encodeComponent('Thanh toan tour ${widget.tourName}')}&accountName=${Uri.encodeComponent(accountName)}';
+
+                                    final chatId = '${widget.userId}_${widget.tourId}';
+                                    
+                                    FirebaseFirestore.instance
+                                        .collection('tour_chats')
+                                        .doc(chatId)
+                                        .collection('messages')
+                                        .add({
+                                      'senderId': admin!.uid,
+                                      'senderName': admin!.displayName ?? 'Admin',
+                                      'message': 'Vui lòng thanh toán số tiền: ${NumberFormat('#,###', 'vi_VN').format(totalPrice.toInt())} VNĐ cho tour "${widget.tourName}". Quét mã QR bên dưới để chuyển khoản.',
+                                      'qrUrl': qrUrl, 
+                                      'timestamp': FieldValue.serverTimestamp(),
+                                      'isAdmin': true,
+                                    });
+                                  }
+                                });
+                              },
+                              icon: const Icon(Icons.qr_code, size: 16),
+                              label: const Text('Tạo QR', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[600],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                // Hiển thị dialog xác nhận thanh toán
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Xác nhận thanh toán'),
+                                    content: Text('Xác nhận khách hàng đã thanh toán ${NumberFormat('#,###', 'vi_VN').format(totalPrice)} VNĐ cho tour "${widget.tourName}"?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Hủy'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Xác nhận'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                
+                                if (confirmed == true) {
+                                  try {
+                                    // Lấy bookingId từ booking
+                                    final bookingSnapshot = await FirebaseFirestore.instance
+                                        .collection('bookings')
+                                        .where('userId', isEqualTo: widget.userId)
+                                        .where('tourId', isEqualTo: widget.tourId)
+                                        .get();
+                                    
+                                    if (bookingSnapshot.docs.isNotEmpty) {
+                                      final bookingId = bookingSnapshot.docs.first.id;
+                                      
+                                      // Sử dụng method đồng bộ để cập nhật booking và invoice
+                                      await _bookingService.confirmPaymentWithInvoiceSync(
+                                        bookingId,
+                                        'Chuyển khoản',
+                                        adminNotes: 'Đã xác nhận thanh toán qua chat',
+                                      );
+                                      
+                                      // Gửi tin nhắn xác nhận
+                                      final chatId = '${widget.userId}_${widget.tourId}';
+                                      await FirebaseFirestore.instance
+                                          .collection('tour_chats')
+                                          .doc(chatId)
+                                          .collection('messages')
+                                          .add({
+                                        'senderId': admin!.uid,
+                                        'senderName': admin!.displayName ?? 'Admin',
+                                        'message': '✅ Đã xác nhận thanh toán thành công! Cảm ơn bạn đã sử dụng dịch vụ.',
+                                        'timestamp': FieldValue.serverTimestamp(),
+                                        'isAdmin': true,
+                                      });
+                                      
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Đã xác nhận thanh toán thành công!')),
+                                        );
+                                      }
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Lỗi: $e')),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.check_circle, size: 16),
+                              label: const Text('Xác nhận', style: TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[600],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              // Không có booking hoặc đang tải
+              return Container(
+                width: double.infinity,
+                color: Colors.grey[100],
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'Chưa có thông tin booking (userId: ${widget.userId}, tourId: ${widget.tourId})',
+                  style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+              );
+            },
+          ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('tour_chats')
-                  .doc(widget.userId)
+                  .doc('${widget.userId}_${widget.tourId}')  // SỬA: Dùng chatId
                   .collection('messages')
                   .orderBy('timestamp', descending: false)
                   .snapshots(),
@@ -119,69 +324,44 @@ class _AdminChatDetailScreenState extends State<AdminChatDetailScreen> {
               },
             ),
           ),
-          // THÊM PHẦN NÀY TRƯỚC Divider(height: 1)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tạo mã QR chuyển khoản:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _amountController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Số tiền (VNĐ)',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _amount = double.tryParse(_amountController.text);
-                          // Gửi tin nhắn số tiền cho user
-                          if (_amount != null && _amount! > 0 && admin != null) {
-                            final qrUrl =
-                                'https://img.vietqr.io/image/$bankId-$account-print.png?amount=${_amount!.toInt()}&addInfo=${Uri.encodeComponent('Thanh toan tour ${widget.tourName}')}&accountName=${Uri.encodeComponent(accountName)}';
-
-                            FirebaseFirestore.instance
-                                .collection('tour_chats')
-                                .doc(widget.userId)
-                                .collection('messages')
-                                .add({
-                              'senderId': admin!.uid,
-                              'senderName': admin!.displayName ?? 'Admin',
-                              'message': 'Vui lòng thanh toán số tiền: ${NumberFormat('#,###', 'vi_VN').format(_amount!.toInt())} VNĐ cho tour "${widget.tourName}". Quét mã QR bên dưới để chuyển khoản.',
-                              'qrUrl': qrUrl, 
-                              'timestamp': FieldValue.serverTimestamp(),
-                              'isAdmin': true,
-                            });
-                          }
-                        });
-                      },
-                      child: const Text('Gửi QR'),
+          // Hiển thị QR code nếu đã tạo
+          if (_amount != null && _amount! > 0)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                if (_amount != null && _amount! > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Center(
-                      child: Image.network(
-                        'https://img.vietqr.io/image/$bankId-$account-print.png?amount=${_amount!.toInt()}&addInfo=${Uri.encodeComponent('Thanh toan tour ${widget.tourName}')}&accountName=${Uri.encodeComponent(accountName)}',
-                        width: 200,
-                        height: 200,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text(
+                      'Mã QR thanh toán',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
                       ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 12),
+                    Image.network(
+                      'https://img.vietqr.io/image/$bankId-$account-print.png?amount=${_amount!.toInt()}&addInfo=${Uri.encodeComponent('Thanh toan tour ${widget.tourName}')}&accountName=${Uri.encodeComponent(accountName)}',
+                      width: 200,
+                      height: 200,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

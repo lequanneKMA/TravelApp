@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lnmq/models/booking_model.dart';
 import 'package:lnmq/models/user_model.dart';
+import 'package:lnmq/services/invoice_service.dart';
 import 'package:lnmq/utils/migrate_bookings.dart';
+import 'invoice_service.dart'; // Import InvoiceService
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,6 +21,8 @@ class BookingService {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Chưa login');
+
+    print('DEBUG createBooking - userId: ${user.uid}, tourId: $tourId'); // Debug log
 
     // Lấy thông tin user từ Firestore - SỬA LẠI
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -43,7 +47,10 @@ class BookingService {
       notes: notes,
     );
 
+    print('DEBUG createBooking - booking data: ${booking.toFirestore()}'); // Debug log
+
     final docRef = await _firestore.collection('bookings').add(booking.toFirestore());
+    print('DEBUG createBooking - saved with ID: ${docRef.id}'); // Debug log
     return docRef.id;
   }
 
@@ -140,15 +147,6 @@ class BookingService {
     await _firestore.collection('bookings').doc(bookingId).update(updateData);
   }
 
-  // Hủy booking
-  Future<void> cancelBooking(String bookingId, String reason) async {
-    await updateBookingStatus(
-      bookingId,
-      BookingStatus.canceled,
-      cancelReason: reason,
-    );
-  }
-
   // Xác nhận thanh toán
   Future<void> confirmPayment(
     String bookingId,
@@ -159,15 +157,6 @@ class BookingService {
       bookingId,
       BookingStatus.paid,
       paymentMethod: paymentMethod,
-      adminNotes: adminNotes,
-    );
-  }
-
-  // Xác nhận booking (sau khi đã thanh toán)
-  Future<void> confirmBooking(String bookingId, {String? adminNotes}) async {
-    await updateBookingStatus(
-      bookingId,
-      BookingStatus.confirmed,
       adminNotes: adminNotes,
     );
   }
@@ -216,8 +205,6 @@ class BookingService {
       'total': bookings.length,
       'pending': 0,
       'paid': 0,
-      'confirmed': 0,
-      'canceled': 0,
       'completed': 0,
     };
 
@@ -233,7 +220,7 @@ class BookingService {
   Future<int> getTotalRevenue() async {
     final snapshot = await _firestore
         .collection('bookings')
-        .where('status', whereIn: ['paid', 'confirmed', 'completed'])
+        .where('status', whereIn: ['paid', 'completed'])
         .get();
 
     int total = 0;
@@ -252,7 +239,7 @@ class BookingService {
 
     final snapshot = await _firestore
         .collection('bookings')
-        .where('status', whereIn: ['paid', 'confirmed', 'completed'])
+        .where('status', whereIn: ['paid', 'completed'])
         .where('createdAt', isGreaterThanOrEqualTo: startOfYear)
         .where('createdAt', isLessThan: endOfYear)
         .get();
@@ -293,6 +280,49 @@ class BookingService {
       }
     } catch (e) {
       print('DEBUG Error: $e');
+    }
+  }
+
+  // Đồng bộ cập nhật booking và invoice khi xác nhận thanh toán
+  Future<void> confirmPaymentWithInvoiceSync(
+    String bookingId,
+    String paymentMethod, {
+    String? adminNotes,
+  }) async {
+    // Import InvoiceService ở đầu file
+    final invoiceService = InvoiceService();
+    
+    // Cập nhật booking
+    await updateBookingStatus(
+      bookingId,
+      BookingStatus.paid,
+      paymentMethod: paymentMethod,
+      adminNotes: adminNotes,
+    );
+    
+    // Xử lý invoice
+    try {
+      final existingInvoice = await invoiceService.getInvoiceByBookingId(bookingId);
+      if (existingInvoice != null) {
+        // Cập nhật invoice thành paid
+        await invoiceService.updateInvoiceStatus(
+          existingInvoice.id,
+          'paid',
+          paidDate: DateTime.now(),
+          paymentMethod: paymentMethod,
+        );
+      } else {
+        // Tạo invoice mới với trạng thái paid
+        final invoiceId = await invoiceService.createInvoiceFromBooking(bookingId);
+        await invoiceService.updateInvoiceStatus(
+          invoiceId,
+          'paid',
+          paidDate: DateTime.now(),
+          paymentMethod: paymentMethod,
+        );
+      }
+    } catch (e) {
+      print('Error syncing invoice: $e');
     }
   }
 

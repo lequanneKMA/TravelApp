@@ -60,34 +60,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   }
 
   void _showPaymentDialog() {
-    final TextEditingController paymentMethodController = TextEditingController();
-    final TextEditingController notesController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Xác nhận thanh toán'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: paymentMethodController,
-              decoration: const InputDecoration(
-                labelText: 'Phương thức thanh toán',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: notesController,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
+        content: Text('Xác nhận hóa đơn ${widget.invoice.invoiceNumber} đã được thanh toán?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -96,18 +73,17 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await _invoiceService.markAsPaid(
+                await _invoiceService.updateInvoiceStatus(
                   widget.invoice.id,
-                  paymentMethodController.text.trim(),
-                  notes: notesController.text.trim().isEmpty 
-                      ? null 
-                      : notesController.text.trim(),
+                  'paid',
+                  paidDate: DateTime.now(),
+                  paymentMethod: 'Chuyển khoản',
                 );
                 if (mounted) {
                   Navigator.pop(context);
                   setState(() {}); // Refresh the UI
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã xác nhận thanh toán thành công!')),
+                    const SnackBar(content: Text('Đã xác nhận thanh toán!')),
                   );
                 }
               } catch (e) {
@@ -329,32 +305,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                       _buildInfoRow('Thông tin ngân hàng:', widget.invoice.bankInfo!),
                     if (widget.invoice.notes != null && widget.invoice.notes!.isNotEmpty)
                       _buildInfoRow('Ghi chú:', widget.invoice.notes!),
-                    
-                    // Hiển thị cảnh báo nếu quá hạn
-                    if (widget.invoice.isOverdue)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(top: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.warning, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text(
-                              'Hóa đơn đã quá hạn thanh toán',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                   ],
                 ),
               ),

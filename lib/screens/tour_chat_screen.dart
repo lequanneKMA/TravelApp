@@ -19,10 +19,13 @@ class _TourChatScreenState extends State<TourChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty || user == null) return;
 
-    // Đảm bảo document cha có đủ trường
+    // SỬA: Tạo chatId riêng cho mỗi tour - userId_tourId
+    final chatId = '${user!.uid}_${widget.tourId}';
+
+    // Đảm bảo document cha có đủ trường với chatId mới
     await FirebaseFirestore.instance
         .collection('tour_chats')
-        .doc(user!.uid)
+        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
         .set({
       'tourId': widget.tourId,
       'tourName': widget.tourName,
@@ -33,7 +36,7 @@ class _TourChatScreenState extends State<TourChatScreen> {
     // Thêm tin nhắn vào subcollection
     await FirebaseFirestore.instance
         .collection('tour_chats')
-        .doc(user!.uid)
+        .doc(chatId)  // SỬA: Dùng chatId thay vì chỉ userId
         .collection('messages')
         .add({
       'senderId': user!.uid,
@@ -70,7 +73,7 @@ class _TourChatScreenState extends State<TourChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('tour_chats')
-                  .doc(user!.uid)
+                  .doc('${user!.uid}_${widget.tourId}')  // SỬA: Dùng chatId
                   .collection('messages')
                   .orderBy('timestamp', descending: false)
                   .snapshots(),

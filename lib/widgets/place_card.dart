@@ -22,10 +22,7 @@ class PlaceCard extends StatelessWidget {
               builder: (context) => PlaceDetailScreen(placeId: place.id), // Truyền place.id
             ),
           );
-          // XÓA HOẶC COMMENT DÒNG SNACKBAR NÀY
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(content: Text('Bạn đã nhấn vào ${place.name}')),
-          // );
+         
         },
         borderRadius: BorderRadius.circular(15.0),
         child: Column(
