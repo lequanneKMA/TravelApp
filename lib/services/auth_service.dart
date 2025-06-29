@@ -24,10 +24,8 @@ class AuthService {
       
       // 3. Disconnect Google account hoàn toàn
       await _googleSignIn.disconnect();
-      
-      print('Successfully signed out');
     } catch (e) {
-      print('Error signing out: $e');
+      rethrow;
     }
   }
 
@@ -56,7 +54,6 @@ class AuthService {
 
       return user;
     } catch (e) {
-      print('Lỗi đăng nhập Google: $e');
       rethrow;
     }
   }
@@ -77,16 +74,14 @@ class AuthService {
           createdAt: DateTime.now(),
           lastLoginAt: DateTime.now(),
         ).toFirestore());
-        print('Created new user document for ${user.uid}');
       } else {
         // Cập nhật lastLoginAt cho user có sẵn
         await _firestore.collection('users').doc(user.uid).update({
           'lastLoginAt': FieldValue.serverTimestamp(),
         });
-        print('Updated login time for existing user ${user.uid}');
       }
     } catch (e) {
-      print('Error creating/updating user document: $e');
+      rethrow;
     }
   }
 
@@ -116,7 +111,6 @@ class AuthService {
       final doc = await _firestore.collection('users').doc(user.uid).get();
       return doc.data()?['role'] == 'admin' || doc.data()?['isAdmin'] == true;
     } catch (e) {
-      print('Error checking admin status: $e');
       return false;
     }
   }

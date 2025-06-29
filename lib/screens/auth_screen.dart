@@ -32,10 +32,6 @@ class _AuthScreenState extends State<AuthScreen> {
           });
         }
 
-        // Lấy lại dữ liệu user sau khi chắc chắn đã có
-        final data = (await userRef.get()).data();
-        print('User data: $data');
-        
         // Không cần điều hướng thủ công, StreamBuilder trong main.dart sẽ tự động xử lý
         // khi authStateChanges được trigger
       }

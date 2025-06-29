@@ -135,7 +135,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
         // Đảm bảo có giá trị userId và userName để truyền cho _submitReview
         final String currentUserId = firebaseCurrentUser?.uid ?? 'anonymous'; 
         final String currentUserName = firebaseCurrentUser?.displayName ?? firebaseCurrentUser?.email?.split('@')[0] ?? 'Người dùng';
-        print('Giá trị của place.category: ${place.category}');
+        
         return Scaffold(
           body: CustomScrollView(
             slivers: [
@@ -417,7 +417,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                                 return const Center(child: CircularProgressIndicator());
                               }
                               if (reviewSnapshot.hasError) {
-                                print('Error loading reviews: ${reviewSnapshot.error}');
                                 return Center(child: Text('Lỗi tải đánh giá: ${reviewSnapshot.error}'));
                               }
                               if (!reviewSnapshot.hasData || reviewSnapshot.data!.isEmpty) {
@@ -553,31 +552,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   }
 
   // Hàm helper để xây dựng các phần thông tin
-  Widget _buildInfoSection(String title, String content) {
-    if (content.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            content,
-            style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showImageGallery(BuildContext context, List<String> imageUrls, int initialIndex) {
   showDialog(
     context: context,

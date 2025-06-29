@@ -25,7 +25,6 @@ class Booking {
   final String? paymentMethod;
   final String? notes;
   final String? adminNotes;
-  final String? cancelReason;
 
   Booking({
     required this.id,
@@ -44,7 +43,6 @@ class Booking {
     this.paymentMethod,
     this.notes,
     this.adminNotes,
-    this.cancelReason,
   });
 
   // Getter để lấy tên trạng thái tiếng Việt
@@ -110,7 +108,6 @@ class Booking {
       paymentMethod: data['paymentMethod'],
       notes: data['notes'],
       adminNotes: data['adminNotes'],
-      cancelReason: data['cancelReason'],
     );
   }
 
@@ -132,7 +129,6 @@ class Booking {
       'paymentMethod': paymentMethod,
       'notes': notes,
       'adminNotes': adminNotes,
-      'cancelReason': cancelReason,
     };
   }
 
@@ -154,7 +150,6 @@ class Booking {
     String? paymentMethod,
     String? notes,
     String? adminNotes,
-    String? cancelReason,
   }) {
     return Booking(
       id: id ?? this.id,
@@ -173,7 +168,6 @@ class Booking {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       notes: notes ?? this.notes,
       adminNotes: adminNotes ?? this.adminNotes,
-      cancelReason: cancelReason ?? this.cancelReason,
     );
   }
 }

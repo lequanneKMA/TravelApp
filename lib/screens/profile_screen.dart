@@ -7,7 +7,6 @@ import 'package:lnmq/services/auth_service.dart';
 import 'package:lnmq/services/user_service.dart';
 import 'package:lnmq/services/storage_service.dart';
 import 'package:lnmq/screens/user_invoice_screen.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

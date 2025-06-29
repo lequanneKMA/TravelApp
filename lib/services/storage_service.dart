@@ -27,14 +27,8 @@ class StorageService {
 
       // Lấy URL tải xuống của ảnh
       final String downloadUrl = await snapshot.ref.getDownloadURL();
-      print('Image uploaded to Firebase Storage: $downloadUrl');
       return downloadUrl;
-    } on FirebaseException catch (e) {
-      print('Firebase Storage Error: ${e.code} - ${e.message}');
-      // Trả về null nếu có lỗi, xử lý lỗi cụ thể ở nơi gọi
-      return null;
     } catch (e) {
-      print('General Storage Error: $e');
       return null;
     }
   }
@@ -44,11 +38,8 @@ class StorageService {
     try {
       final Reference storageRef = _storage.refFromURL(imageUrl);
       await storageRef.delete();
-      print('Image deleted from Firebase Storage: $imageUrl');
-    } on FirebaseException catch (e) {
-      print('Error deleting image from Firebase Storage: ${e.code} - ${e.message}');
     } catch (e) {
-      print('General Error deleting image: $e');
+      // Xử lý lỗi nếu cần
     }
   }
 }

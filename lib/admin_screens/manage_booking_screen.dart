@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:lnmq/models/booking_model.dart';
 import 'package:lnmq/services/booking_service.dart';
-import 'package:lnmq/services/invoice_service.dart';
 import 'package:lnmq/admin_screens/booking_detail_screen.dart';
 
 class ManageBookingScreen extends StatefulWidget {
@@ -14,7 +13,6 @@ class ManageBookingScreen extends StatefulWidget {
 
 class _ManageBookingScreenState extends State<ManageBookingScreen> {
   final BookingService _bookingService = BookingService();
-  final InvoiceService _invoiceService = InvoiceService();
   final TextEditingController _searchController = TextEditingController();
   String _searchTerm = '';
   BookingStatus? _filterStatus;

@@ -51,7 +51,6 @@ class PlaceCard extends StatelessWidget {
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
-                  print('Error loading image for ${place.name} in PlaceCard: $error'); // In lỗi ra console
                   return Container(
                     height: 200,
                     width: double.infinity,

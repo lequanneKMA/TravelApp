@@ -182,8 +182,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       _buildInfoRow('Ghi chú khách hàng:', widget.booking.notes!),
                     if (widget.booking.adminNotes != null && widget.booking.adminNotes!.isNotEmpty)
                       _buildInfoRow('Ghi chú admin:', widget.booking.adminNotes!),
-                    if (widget.booking.cancelReason != null && widget.booking.cancelReason!.isNotEmpty)
-                      _buildInfoRow('Lý do hủy:', widget.booking.cancelReason!),
                   ],
                 ),
               ),

@@ -3,17 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Để lấy thông tin người dùng hiện tại
 import 'package:lnmq/models/review_model.dart'; // Đảm bảo đúng 'lnmq'
 import 'package:lnmq/models/place_model.dart'; // Đảm bảo đúng 'lnmq'
-import 'package:lnmq/services/place_service.dart'; // Đảm bảo đúng 'lnmq'
 
 class ReviewService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // Sử dụng 'late final' và khởi tạo trong constructor nếu cần, hoặc khởi tạo trực tiếp
-  // Nếu PlaceService được sử dụng ngay lập tức trong constructor của ReviewService,
-  // bạn có thể gặp lỗi vòng lặp phụ thuộc. Cách an toàn hơn là truyền nó vào
-  // hoặc khởi tạo nó khi cần, hoặc sử dụng singleton pattern.
-  // Hiện tại, tôi sẽ khởi tạo trực tiếp như bạn đã làm.
-  final PlaceService _placeService = PlaceService();
 
   static const String _reviewsCollection = 'reviews';
   static const String _placesCollection = 'places'; // Tên collection của địa điểm
@@ -73,14 +66,11 @@ class ReviewService {
           'reviewCount': newReviewCount,
         });
       } else {
-        print('Địa điểm với ID $placeId không tồn tại để cập nhật đánh giá.');
-        // Bạn có thể chọn ném lỗi hoặc chỉ cảnh báo.
+        throw Exception('Địa điểm với ID $placeId không tồn tại để cập nhật đánh giá.');
       }
 
       await batch.commit();
-      print('Đánh giá và điểm địa điểm đã được cập nhật thành công!');
     } catch (e) {
-      print('Lỗi khi thêm đánh giá hoặc cập nhật địa điểm: $e');
       rethrow;
     }
   }
@@ -108,7 +98,6 @@ class ReviewService {
 
       return snapshot.docs.map((doc) => Review.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Lỗi khi lấy đánh giá của người dùng: $e');
       rethrow;
     }
   }

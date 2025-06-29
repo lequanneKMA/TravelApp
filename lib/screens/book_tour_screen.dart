@@ -37,7 +37,7 @@ class _BookTourScreenState extends State<BookTourScreen> {
 
       final totalPrice = (_selectedTourPrice ?? 0) * _numPeople;
 
-      final bookingId = await _bookingService.createBooking(
+      await _bookingService.createBooking(
         tourId: _selectedTourId!,
         tourName: _selectedTourName!,
         dateStart: _dateStartController.text.trim(),

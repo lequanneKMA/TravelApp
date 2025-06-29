@@ -30,9 +30,7 @@ class UserService {
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
     try {
       await _firestore.collection(_usersCollection).doc(uid).update(data);
-      print('User data for $uid updated successfully!');
     } catch (e) {
-      print('Error updating user data: $e');
       rethrow;
     }
   }
@@ -47,9 +45,7 @@ class UserService {
       await _firestore.collection(_usersCollection).doc(currentUser.uid).update({
         'favoritePlaceIds': FieldValue.arrayUnion([placeId]),
       });
-      print('Địa điểm $placeId đã được thêm vào yêu thích.');
     } catch (e) {
-      print('Lỗi khi thêm địa điểm yêu thích: $e');
       rethrow;
     }
   }
@@ -64,9 +60,7 @@ class UserService {
       await _firestore.collection(_usersCollection).doc(currentUser.uid).update({
         'favoritePlaceIds': FieldValue.arrayRemove([placeId]),
       });
-      print('Địa điểm $placeId đã được xóa khỏi yêu thích.');
     } catch (e) {
-      print('Lỗi khi xóa địa điểm yêu thích: $e');
       rethrow;
     }
   }
@@ -85,7 +79,6 @@ class UserService {
       }
       return false;
     } catch (e) {
-      print('Lỗi khi kiểm tra địa điểm yêu thích: $e');
       return false;
     }
   }

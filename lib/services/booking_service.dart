@@ -4,8 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lnmq/models/booking_model.dart';
 import 'package:lnmq/models/user_model.dart';
 import 'package:lnmq/services/invoice_service.dart';
-import 'package:lnmq/utils/migrate_bookings.dart';
-import 'invoice_service.dart'; // Import InvoiceService
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -22,9 +20,7 @@ class BookingService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Chưa login');
 
-    print('DEBUG createBooking - userId: ${user.uid}, tourId: $tourId'); // Debug log
-
-    // Lấy thông tin user từ Firestore - SỬA LẠI
+    // Lấy thông tin user từ Firestore
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     AppUser? appUser;
     if (userDoc.exists) {
@@ -32,7 +28,7 @@ class BookingService {
     }
 
     final booking = Booking(
-      id: '', // Sẽ được set sau khi add vào Firestore
+      id: '',
       userId: user.uid,
       tourId: tourId,
       tourName: tourName,
@@ -47,10 +43,7 @@ class BookingService {
       notes: notes,
     );
 
-    print('DEBUG createBooking - booking data: ${booking.toFirestore()}'); // Debug log
-
     final docRef = await _firestore.collection('bookings').add(booking.toFirestore());
-    print('DEBUG createBooking - saved with ID: ${docRef.id}'); // Debug log
     return docRef.id;
   }
 
@@ -63,43 +56,23 @@ class BookingService {
       }
       return null;
     } catch (e) {
-      print('Error getting booking: $e');
       return null;
     }
   }
 
-  // Lấy tất cả bookings của user hiện tại - SỬA LẠI để tránh lỗi index
+  // Lấy booking của user hiện tại
   Stream<List<Booking>> getUserBookings() {
     final user = FirebaseAuth.instance.currentUser;
-    print('DEBUG getUserBookings: user = ${user?.uid}'); // Debug log
-    
-    if (user == null) {
-      print('DEBUG: No user logged in');
-      return Stream.value([]);
-    }
+    if (user == null) return Stream.value([]);
 
     return _firestore
         .collection('bookings')
         .where('userId', isEqualTo: user.uid)
         .snapshots()
-        .handleError((error) {
-          print('DEBUG: Stream error in getUserBookings: $error');
-        })
         .map((snapshot) {
-          print('DEBUG: Received ${snapshot.docs.length} booking documents'); // Debug log
-          try {
-            final bookings = snapshot.docs.map((doc) {
-              print('DEBUG: Processing booking doc ${doc.id}'); // Debug log
-              return Booking.fromFirestore(doc);
-            }).toList();
-            // Sort trong code thay vì query để tránh lỗi index
-            bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            print('DEBUG: Returning ${bookings.length} bookings'); // Debug log
-            return bookings;
-          } catch (e) {
-            print('DEBUG: Error processing bookings: $e');
-            return <Booking>[];
-          }
+          final bookings = snapshot.docs.map((doc) => Booking.fromFirestore(doc)).toList();
+          bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return bookings;
         });
   }
 
@@ -113,7 +86,7 @@ class BookingService {
             snapshot.docs.map((doc) => Booking.fromFirestore(doc)).toList());
   }
 
-  // Lấy bookings theo trạng thái - SỬA LẠI để tránh lỗi index
+  // Lấy bookings theo trạng thái
   Stream<List<Booking>> getBookingsByStatus(BookingStatus status) {
     return _firestore
         .collection('bookings')
@@ -121,7 +94,6 @@ class BookingService {
         .snapshots()
         .map((snapshot) {
           final bookings = snapshot.docs.map((doc) => Booking.fromFirestore(doc)).toList();
-          // Sort trong code thay vì query để tránh lỗi index
           bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return bookings;
         });
@@ -133,7 +105,6 @@ class BookingService {
     BookingStatus status, {
     String? adminNotes,
     String? paymentMethod,
-    String? cancelReason,
   }) async {
     final updateData = <String, dynamic>{
       'status': status.toString().split('.').last,
@@ -142,7 +113,6 @@ class BookingService {
 
     if (adminNotes != null) updateData['adminNotes'] = adminNotes;
     if (paymentMethod != null) updateData['paymentMethod'] = paymentMethod;
-    if (cancelReason != null) updateData['cancelReason'] = cancelReason;
 
     await _firestore.collection('bookings').doc(bookingId).update(updateData);
   }
@@ -196,7 +166,7 @@ class BookingService {
     });
   }
 
-  // Thống kê booking
+  // Thống kê booking (giữ lại cho admin dashboard)
   Future<Map<String, int>> getBookingStats() async {
     final snapshot = await _firestore.collection('bookings').get();
     final bookings = snapshot.docs.map((doc) => Booking.fromFirestore(doc)).toList();
@@ -216,73 +186,6 @@ class BookingService {
     return stats;
   }
 
-  // Lấy tổng doanh thu
-  Future<int> getTotalRevenue() async {
-    final snapshot = await _firestore
-        .collection('bookings')
-        .where('status', whereIn: ['paid', 'completed'])
-        .get();
-
-    int total = 0;
-    for (final doc in snapshot.docs) {
-      final booking = Booking.fromFirestore(doc);
-      total += booking.totalPrice;
-    }
-
-    return total;
-  }
-
-  // Lấy doanh thu theo tháng
-  Future<Map<String, int>> getMonthlyRevenue(int year) async {
-    final startOfYear = DateTime(year, 1, 1);
-    final endOfYear = DateTime(year + 1, 1, 1);
-
-    final snapshot = await _firestore
-        .collection('bookings')
-        .where('status', whereIn: ['paid', 'completed'])
-        .where('createdAt', isGreaterThanOrEqualTo: startOfYear)
-        .where('createdAt', isLessThan: endOfYear)
-        .get();
-
-    final monthlyRevenue = <String, int>{};
-    for (int month = 1; month <= 12; month++) {
-      monthlyRevenue['$month'] = 0;
-    }
-
-    for (final doc in snapshot.docs) {
-      final booking = Booking.fromFirestore(doc);
-      final month = booking.createdAt.month.toString();
-      monthlyRevenue[month] = (monthlyRevenue[month] ?? 0) + booking.totalPrice;
-    }
-
-    return monthlyRevenue;
-  }
-
-  // Debug method để kiểm tra connection
-  Future<void> debugCheckBookings() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      print('DEBUG: Current user: ${user?.uid}');
-      
-      // Kiểm tra collection bookings
-      final snapshot = await _firestore.collection('bookings').get();
-      print('DEBUG: Total bookings in collection: ${snapshot.docs.length}');
-      
-      // Kiểm tra bookings của user hiện tại
-      final userBookings = await _firestore
-          .collection('bookings')
-          .where('userId', isEqualTo: user?.uid ?? '')
-          .get();
-      print('DEBUG: User bookings count: ${userBookings.docs.length}');
-      
-      for (var doc in userBookings.docs) {
-        print('DEBUG: Booking ${doc.id}: ${doc.data()}');
-      }
-    } catch (e) {
-      print('DEBUG Error: $e');
-    }
-  }
-
   // Đồng bộ cập nhật booking và invoice khi xác nhận thanh toán
   Future<void> confirmPaymentWithInvoiceSync(
     String bookingId,
@@ -299,17 +202,14 @@ class BookingService {
       adminNotes: adminNotes,
     );
     
-    // Tạo invoice với trạng thái đã xuất (paid)
+    // Tạo invoice
     try {
       final existingInvoice = await invoiceService.getInvoiceByBookingId(bookingId);
       if (existingInvoice == null) {
-        // Tạo invoice mới - sẽ được tạo với trạng thái 'paid' mặc định
         await invoiceService.createInvoiceFromBooking(bookingId);
       }
-      // Không cần update status vì invoice đã được tạo với status 'paid'
     } catch (e) {
-      print('Error creating invoice: $e');
+      // Xử lý lỗi tạo invoice nếu cần
     }
   }
-
 }

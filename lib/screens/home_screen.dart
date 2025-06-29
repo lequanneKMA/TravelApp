@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lnmq/services/auth_service.dart' as auth_service;
-import 'package:lnmq/screens/auth_screen.dart';
 import 'package:lnmq/services/place_service.dart';
 import 'package:lnmq/models/place_model.dart';
 import 'package:lnmq/models/review_model.dart';
-import 'package:lnmq/widgets/place_card.dart';
 import 'package:lnmq/screens/favorite_places_screen.dart';
 import 'package:lnmq/screens/profile_screen.dart';
 import 'package:lnmq/screens/search_screen.dart';
 import 'package:lnmq/screens/book_tour_screen.dart';
-import 'package:lnmq/screens/tour_chat_screen.dart';
 import 'package:lnmq/screens/place_detail_screen.dart';
 import 'package:lnmq/services/review_service.dart';
 import 'package:lnmq/screens/all_recommendations_screen.dart'; // Import màn hình xem tất cả gợi ý
@@ -414,12 +410,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
-  }
-
-   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   Widget _getTabContent() {

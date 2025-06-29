@@ -12,9 +12,7 @@ class PlaceService {
     try {
       // Sử dụng add để Firestore tự tạo ID tài liệu
       await _firestore.collection(_placesCollection).add(place.toFirestore());
-      print('Địa điểm "${place.name}" đã được thêm thành công!');
     } catch (e) {
-      print('Lỗi khi thêm địa điểm: $e');
       rethrow; // Ném lại lỗi để xử lý ở UI
     }
   }
@@ -33,11 +31,9 @@ class PlaceService {
       if (doc.exists) {
         return Place.fromFirestore(doc);
       } else {
-        print('Không tìm thấy địa điểm với ID: $placeId');
         return null;
       }
     } catch (e) {
-      print('Lỗi khi lấy địa điểm theo ID: $e');
       rethrow;
     }
   }
@@ -46,9 +42,7 @@ class PlaceService {
   Future<void> updatePlace(Place place) async {
     try {
       await _firestore.collection(_placesCollection).doc(place.id).update(place.toFirestore());
-      print('Địa điểm "${place.name}" đã được cập nhật thành công!');
     } catch (e) {
-      print('Lỗi khi cập nhật địa điểm: $e');
       rethrow;
     }
   }
@@ -57,9 +51,7 @@ class PlaceService {
   Future<void> deletePlace(String placeId) async {
     try {
       await _firestore.collection(_placesCollection).doc(placeId).delete();
-      print('Địa điểm với ID: $placeId đã được xóa thành công!');
     } catch (e) {
-      print('Lỗi khi xóa địa điểm: $e');
       rethrow;
     }
   }
@@ -81,7 +73,6 @@ class PlaceService {
 
       return snapshot.docs.map((doc) => Place.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Lỗi khi lấy địa điểm theo danh sách ID: $e');
       rethrow;
     }
   }

@@ -96,7 +96,7 @@ class InvoiceService {
       paymentMethod: paymentMethod ?? 'Chuyển khoản ngân hàng',
       paidDate: DateTime.now(), // Thời gian xuất hóa đơn
       notes: notes ?? 'Hóa đơn thanh toán tour du lịch',
-      bankInfo: bankInfo ?? 'Ngân hàng: Vietcombank\nSố tài khoản: 0123456789\nChủ tài khoản: CÔNG TY DU LỊCH LNMQ',
+      bankInfo: bankInfo ?? 'Ngân hàng: TPbank\nSố tài khoản: 0123456789\nChủ tài khoản: CÔNG TY DU LỊCH LNMQ',
     );
 
     final docRef = await _firestore.collection('invoices').add(invoice.toFirestore());
@@ -112,7 +112,6 @@ class InvoiceService {
       }
       return null;
     } catch (e) {
-      print('Error getting invoice: $e');
       return null;
     }
   }
@@ -130,7 +129,6 @@ class InvoiceService {
       }
       return null;
     } catch (e) {
-      print('Error getting invoice by booking ID: $e');
       return null;
     }
   }

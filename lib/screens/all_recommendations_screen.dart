@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lnmq/models/place_model.dart';
-import 'package:lnmq/models/review_model.dart';
 import 'package:lnmq/services/review_service.dart';
 import 'package:lnmq/screens/place_detail_screen.dart';
 
