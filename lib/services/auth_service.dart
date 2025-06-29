@@ -31,7 +31,7 @@ class AuthService {
     }
   }
 
-  // ĐĂNG NHẬP GOOGLE (KHÔNG CÓ ĐĂNG KÝ)
+  // ĐĂNG NHẬP GOOGLE DUY NHẤT
   Future<User?> signInWithGoogle() async {
     try {
       // Đảm bảo signed out trước khi sign in
@@ -51,7 +51,7 @@ class AuthService {
 
       // CHỈ CẬP NHẬT THÔNG TIN, KHÔNG TẠO MỚI
       if (user != null) {
-        await _updateUserLoginInfo(user);
+        await _createOrUpdateUserDocument(user);
       }
 
       return user;
@@ -61,92 +61,32 @@ class AuthService {
     }
   }
 
-  // ĐĂNG KÝ EMAIL/PASSWORD (RIÊNG BIỆT)
-  Future<User?> signUpWithEmailPassword(String email, String password, String displayName) async {
-    try {
-      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = userCredential.user;
-
-      if (user != null) {
-        // Cập nhật display name
-        await user.updateDisplayName(displayName);
-        await user.reload();
-
-        // TẠO USER DOCUMENT KHI ĐĂNG KÝ
-        await _createUserDocument(user, displayName);
-      }
-      return user;
-    } catch (e) {
-      print('Lỗi đăng ký: $e');
-      rethrow;
-    }
-  }
-
-  // ĐĂNG NHẬP EMAIL/PASSWORD (KHÔNG TẠO MỚI)
-  Future<User?> signInWithEmailPassword(String email, String password) async {
-    try {
-      UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = userCredential.user;
-
-      // CHỈ CẬP NHẬT LOGIN TIME
-      if (user != null) {
-        await _updateUserLoginInfo(user);
-      }
-      return user;
-    } catch (e) {
-      print('Lỗi đăng nhập: $e');
-      rethrow;
-    }
-  }
-
-  // HELPER: TẠO USER DOCUMENT (CHỈ KHI ĐĂNG KÝ)
-  Future<void> _createUserDocument(User user, [String? displayName]) async {
+  // TẠO HOẶC CẬP NHẬT USER DOCUMENT
+  Future<void> _createOrUpdateUserDocument(User user) async {
     try {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       
-      // CHỈ TẠO NẾU CHƯA TỒN TẠI
       if (!userDoc.exists) {
+        // Tạo mới user
         await _firestore.collection('users').doc(user.uid).set(AppUser(
           uid: user.uid,
           email: user.email ?? '',
-          displayName: displayName ?? user.displayName ?? '',
+          displayName: user.displayName ?? '',
           photoUrl: user.photoURL,
           favoritePlaceIds: [],
           createdAt: DateTime.now(),
           lastLoginAt: DateTime.now(),
         ).toFirestore());
-        
         print('Created new user document for ${user.uid}');
-      }
-    } catch (e) {
-      print('Error creating user document: $e');
-    }
-  }
-
-  // HELPER: CẬP NHẬT THÔNG TIN LOGIN (KHI ĐĂNG NHẬP)
-  Future<void> _updateUserLoginInfo(User user) async {
-    try {
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      
-      if (userDoc.exists) {
-        // User đã tồn tại -> chỉ cập nhật lastLoginAt
+      } else {
+        // Cập nhật lastLoginAt cho user có sẵn
         await _firestore.collection('users').doc(user.uid).update({
           'lastLoginAt': FieldValue.serverTimestamp(),
         });
         print('Updated login time for existing user ${user.uid}');
-      } else {
-        // User chưa tồn tại (trường hợp đặc biệt) -> tạo mới
-        await _createUserDocument(user);
-        print('Created missing user document for ${user.uid}');
       }
     } catch (e) {
-      print('Error updating user login info: $e');
+      print('Error creating/updating user document: $e');
     }
   }
 
@@ -164,16 +104,6 @@ class AuthService {
         await user.updatePhotoURL(photoUrl);
       }
       await user.reload();
-    }
-  }
-
-  // RESET PASSWORD
-  Future<void> resetPassword(String email) async {
-    try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      print('Lỗi reset password: $e');
-      rethrow;
     }
   }
 

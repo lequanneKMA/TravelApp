@@ -98,21 +98,6 @@ class _UserInvoiceScreenState extends State<UserInvoiceScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Color(int.parse('0xFF${invoice.statusColor.substring(1)}')),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                invoice.statusName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -142,10 +127,10 @@ class _UserInvoiceScreenState extends State<UserInvoiceScreen> {
                             ),
                           ],
                         ),
-                        // Luôn hiển thị đã xuất hóa đơn
+                        // ĐÃ ĐƯỢC RÚT GỌN:
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           margin: const EdgeInsets.only(top: 8),
                           decoration: BoxDecoration(
                             color: Colors.green[100],
@@ -154,15 +139,16 @@ class _UserInvoiceScreenState extends State<UserInvoiceScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                invoice.paidDate != null 
-                                    ? 'Đã xuất hóa đơn: ${invoice.formattedPaidDate}'
-                                    : 'Đã xuất hóa đơn: ${invoice.formattedIssueDate}',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
+                              const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Đã xuất: ${invoice.formattedIssueDate}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
