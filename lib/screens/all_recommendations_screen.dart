@@ -291,20 +291,7 @@ class _AllRecommendationsScreenState extends State<AllRecommendationsScreen> {
                     ],
                   ),
                 ),
-                
-                // Icon yêu thích
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.favorite_border,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                ),
+
               ],
             ),
           ),

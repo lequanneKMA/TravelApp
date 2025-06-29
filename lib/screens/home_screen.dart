@@ -387,16 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ),
-                                
-                                // Icon yêu thích
-                                IconButton(
-                                  icon: const Icon(Icons.favorite_border, color: Colors.grey),
-                                  onPressed: () {
-                                    // Xử lý yêu thích
-                                  },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
+  
                               ],
                             ),
                           ),
